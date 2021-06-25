@@ -27,11 +27,14 @@
  *
  */
 
+import { connection as WebSocket, IMessage } from 'websocket';
+
 import { ByteBufferClass } from '../window.d';
+import { typedArrayToArrayBuffer as toArrayBuffer } from '../Crypto';
 
 import EventTarget from './EventTarget';
 
-import { WebSocket } from './WebSocket';
+import { isOlderThan } from '../util/timestamp';
 
 class Request {
   verb: string;
@@ -92,14 +95,13 @@ export class IncomingWebSocketRequest {
     this.headers = request.headers;
 
     this.respond = (status, message) => {
-      socket.send(
-        new window.textsecure.protobuf.WebSocketMessage({
-          type: window.textsecure.protobuf.WebSocketMessage.Type.RESPONSE,
-          response: { id: request.id, message, status },
-        })
-          .encode()
-          .toArrayBuffer()
-      );
+      const ab = new window.textsecure.protobuf.WebSocketMessage({
+        type: window.textsecure.protobuf.WebSocketMessage.Type.RESPONSE,
+        response: { id: request.id, message, status },
+      })
+        .encode()
+        .toArrayBuffer();
+      socket.sendBytes(Buffer.from(ab));
     };
   }
 }
@@ -111,20 +113,19 @@ class OutgoingWebSocketRequest {
   constructor(options: any, socket: WebSocket) {
     const request = new Request(options);
     outgoing[request.id] = request;
-    socket.send(
-      new window.textsecure.protobuf.WebSocketMessage({
-        type: window.textsecure.protobuf.WebSocketMessage.Type.REQUEST,
-        request: {
-          verb: request.verb,
-          path: request.path,
-          body: request.body,
-          headers: request.headers,
-          id: request.id,
-        },
-      })
-        .encode()
-        .toArrayBuffer()
-    );
+    const ab = new window.textsecure.protobuf.WebSocketMessage({
+      type: window.textsecure.protobuf.WebSocketMessage.Type.REQUEST,
+      request: {
+        verb: request.verb,
+        path: request.path,
+        body: request.body,
+        headers: request.headers,
+        id: request.id,
+      },
+    })
+      .encode()
+      .toArrayBuffer();
+    socket.sendBytes(Buffer.from(ab));
   }
 }
 
@@ -149,66 +150,58 @@ export default class WebSocketResource extends EventTarget {
     this.sendRequest = options => new OutgoingWebSocketRequest(options, socket);
 
     // eslint-disable-next-line no-param-reassign
-    socket.onmessage = socketMessage => {
-      const blob = socketMessage.data;
-      const handleArrayBuffer = (buffer: ArrayBuffer) => {
-        const message = window.textsecure.protobuf.WebSocketMessage.decode(
-          buffer
+    const onMessage = ({ type, binaryData }: IMessage): void => {
+      if (type !== 'binary' || !binaryData) {
+        throw new Error(`Unsupported websocket message type: ${type}`);
+      }
+
+      const message = window.textsecure.protobuf.WebSocketMessage.decode(
+        toArrayBuffer(binaryData)
+      );
+      if (
+        message.type ===
+          window.textsecure.protobuf.WebSocketMessage.Type.REQUEST &&
+        message.request
+      ) {
+        handleRequest(
+          new IncomingWebSocketRequest({
+            verb: message.request.verb,
+            path: message.request.path,
+            body: message.request.body,
+            headers: message.request.headers,
+            id: message.request.id,
+            socket,
+          })
         );
-        if (
-          message.type ===
-            window.textsecure.protobuf.WebSocketMessage.Type.REQUEST &&
-          message.request
-        ) {
-          handleRequest(
-            new IncomingWebSocketRequest({
-              verb: message.request.verb,
-              path: message.request.path,
-              body: message.request.body,
-              headers: message.request.headers,
-              id: message.request.id,
-              socket,
-            })
-          );
-        } else if (
-          message.type ===
-            window.textsecure.protobuf.WebSocketMessage.Type.RESPONSE &&
-          message.response
-        ) {
-          const { response } = message;
-          const request = outgoing[response.id];
-          if (request) {
-            request.response = response;
-            let callback = request.error;
-            if (
-              response.status &&
-              response.status >= 200 &&
-              response.status < 300
-            ) {
-              callback = request.success;
-            }
-
-            if (typeof callback === 'function') {
-              callback(response.message, response.status, request);
-            }
-          } else {
-            throw new Error(
-              `Received response for unknown request ${message.response.id}`
-            );
+      } else if (
+        message.type ===
+          window.textsecure.protobuf.WebSocketMessage.Type.RESPONSE &&
+        message.response
+      ) {
+        const { response } = message;
+        const request = outgoing[response.id];
+        if (request) {
+          request.response = response;
+          let callback = request.error;
+          if (
+            response.status &&
+            response.status >= 200 &&
+            response.status < 300
+          ) {
+            callback = request.success;
           }
-        }
-      };
 
-      if (blob instanceof ArrayBuffer) {
-        handleArrayBuffer(blob);
-      } else {
-        const reader = new FileReader();
-        reader.onload = () => {
-          handleArrayBuffer(reader.result as ArrayBuffer);
-        };
-        reader.readAsArrayBuffer(blob as any);
+          if (typeof callback === 'function') {
+            callback(response.message, response.status, request);
+          }
+        } else {
+          throw new Error(
+            `Received response for unknown request ${message.response.id}`
+          );
+        }
       }
     };
+    socket.on('message', onMessage);
 
     if (opts.keepalive) {
       this.keepalive = new KeepAlive(this, {
@@ -217,15 +210,13 @@ export default class WebSocketResource extends EventTarget {
       });
       const resetKeepAliveTimer = this.keepalive.reset.bind(this.keepalive);
 
-      socket.addEventListener('open', resetKeepAliveTimer);
-      socket.addEventListener('message', resetKeepAliveTimer);
-      socket.addEventListener(
-        'close',
-        this.keepalive.stop.bind(this.keepalive)
-      );
+      this.keepalive.reset();
+
+      socket.on('message', resetKeepAliveTimer);
+      socket.on('close', this.keepalive.stop.bind(this.keepalive));
     }
 
-    socket.addEventListener('close', () => {
+    socket.on('close', () => {
       this.closed = true;
     });
 
@@ -242,7 +233,7 @@ export default class WebSocketResource extends EventTarget {
       socket.close(code, reason);
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      socket.onmessage = undefined;
+      socket.removeListener('message', onMessage);
 
       // On linux the socket can wait a long time to emit its close event if we've
       //   lost the internet connection. On the order of minutes. This speeds that
@@ -261,6 +252,13 @@ export default class WebSocketResource extends EventTarget {
       }, 5000);
     };
   }
+
+  public forceKeepAlive(): void {
+    if (!this.keepalive) {
+      return;
+    }
+    this.keepalive.send();
+  }
 }
 
 type KeepAliveOptionsType = {
@@ -268,16 +266,22 @@ type KeepAliveOptionsType = {
   disconnect?: boolean;
 };
 
+const KEEPALIVE_INTERVAL_MS = 55000; // 55 seconds + 5 seconds for closing the
+// socket above.
+const MAX_KEEPALIVE_INTERVAL_MS = 300 * 1000; // 5 minutes
+
 class KeepAlive {
-  keepAliveTimer: any;
+  private keepAliveTimer: NodeJS.Timeout | undefined;
 
-  disconnectTimer: any;
+  private disconnectTimer: NodeJS.Timeout | undefined;
 
-  path: string;
+  private path: string;
 
-  disconnect: boolean;
+  private disconnect: boolean;
 
-  wsr: WebSocketResource;
+  private wsr: WebSocketResource;
+
+  private lastAliveAt: number = Date.now();
 
   constructor(
     websocketResource: WebSocketResource,
@@ -292,30 +296,58 @@ class KeepAlive {
     }
   }
 
-  stop() {
-    clearTimeout(this.keepAliveTimer);
-    clearTimeout(this.disconnectTimer);
+  public stop(): void {
+    this.clearTimers();
   }
 
-  reset() {
-    clearTimeout(this.keepAliveTimer);
-    clearTimeout(this.disconnectTimer);
-    this.keepAliveTimer = setTimeout(() => {
-      if (this.disconnect) {
-        // automatically disconnect if server doesn't ack
-        this.disconnectTimer = setTimeout(() => {
-          clearTimeout(this.keepAliveTimer);
-          this.wsr.close(3001, 'No response to keepalive request');
-        }, 10000);
-      } else {
-        this.reset();
-      }
-      window.log.info('Sending a keepalive message');
-      this.wsr.sendRequest({
-        verb: 'GET',
-        path: this.path,
-        success: this.reset.bind(this),
-      });
-    }, 55000);
+  public send(): void {
+    this.clearTimers();
+
+    if (isOlderThan(this.lastAliveAt, MAX_KEEPALIVE_INTERVAL_MS)) {
+      window.log.info('WebSocketResources: disconnecting due to stale state');
+      this.wsr.close(
+        3001,
+        `Last keepalive request was too far in the past: ${this.lastAliveAt}`
+      );
+      return;
+    }
+
+    if (this.disconnect) {
+      // automatically disconnect if server doesn't ack
+      this.disconnectTimer = setTimeout(() => {
+        window.log.info('WebSocketResources: disconnecting due to no response');
+        this.clearTimers();
+
+        this.wsr.close(3001, 'No response to keepalive request');
+      }, 10000);
+    } else {
+      this.reset();
+    }
+
+    window.log.info('WebSocketResources: Sending a keepalive message');
+    this.wsr.sendRequest({
+      verb: 'GET',
+      path: this.path,
+      success: this.reset.bind(this),
+    });
+  }
+
+  public reset(): void {
+    this.lastAliveAt = Date.now();
+
+    this.clearTimers();
+
+    this.keepAliveTimer = setTimeout(() => this.send(), KEEPALIVE_INTERVAL_MS);
+  }
+
+  private clearTimers(): void {
+    if (this.keepAliveTimer) {
+      clearTimeout(this.keepAliveTimer);
+      this.keepAliveTimer = undefined;
+    }
+    if (this.disconnectTimer) {
+      clearTimeout(this.disconnectTimer);
+      this.disconnectTimer = undefined;
+    }
   }
 }

@@ -17,7 +17,7 @@ import {
 } from '@signalapp/signal-client';
 
 import { uploadDebugLogs } from './debuglogs';
-import { redactAll } from '../../js/modules/privacy';
+import { redactAll } from '../util/privacy';
 import {
   LogEntryType,
   LogLevel,
@@ -193,7 +193,7 @@ window.addEventListener('unhandledrejection', rejectionEvent => {
 });
 
 initLogger(
-  SignalClientLogLevel.Trace,
+  SignalClientLogLevel.Warn,
   (
     level: unknown,
     target: string,

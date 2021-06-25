@@ -2,6 +2,7 @@
 # supports `.gitignore`: https://github.com/prettier/prettier/issues/2294
 
 # Generated files
+app/**/*.js
 config/local-*.json
 config/local.json
 dist/**
@@ -29,6 +30,9 @@ test/blanket_mocha.js
 
 # Test fixtures
 test/fixtures.js
+
+# Github workflows
+.github/**
 
 # Managed by Transifex:
 # Note: the negate pattern only works because it's targeting the same depth as the

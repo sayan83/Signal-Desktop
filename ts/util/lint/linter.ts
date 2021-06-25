@@ -28,6 +28,7 @@ const excludedFilesRegexps = [
   '\\.d\\.ts$',
 
   // High-traffic files in our project
+  '^app/.+(ts|js)',
   '^ts/models/messages.js',
   '^ts/models/messages.ts',
   '^ts/models/conversations.js',
@@ -63,6 +64,9 @@ const excludedFilesRegexps = [
   // Test files
   '^libtextsecure/test/.+',
   '^test/.+',
+
+  // Github workflows
+  '^.github/.+',
 
   // Modules we trust
   '^node_modules/core-js-pure/.+',

@@ -25,6 +25,7 @@ const defaultMessage: MessageDataPropsType = {
   canReply: true,
   canDeleteForEveryone: true,
   canDownload: true,
+  conversationColor: 'crimson',
   conversationId: 'my-convo',
   conversationType: 'direct',
   direction: 'incoming',
@@ -41,13 +42,11 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
   contacts: overrideProps.contacts || [
     {
       ...getDefaultConversation({
-        color: 'green',
+        color: 'indigo',
         title: 'Just Max',
       }),
       isOutgoingKeyError: false,
       isUnidentifiedDelivery: false,
-      onSendAnyway: action('onSendAnyway'),
-      onShowSafetyNumber: action('onShowSafetyNumber'),
       status: 'delivered',
     },
   ],
@@ -59,26 +58,35 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
   i18n,
   interactionMode: 'keyboard',
 
-  clearSelectedMessage: () => null,
+  sendAnyway: action('onSendAnyway'),
+  showSafetyNumber: action('onShowSafetyNumber'),
+
+  checkForAccount: action('checkForAccount'),
+  clearSelectedMessage: action('clearSelectedMessage'),
   deleteMessage: action('deleteMessage'),
   deleteMessageForEveryone: action('deleteMessageForEveryone'),
-  displayTapToViewMessage: () => null,
-  downloadAttachment: () => null,
+  displayTapToViewMessage: action('displayTapToViewMessage'),
+  downloadAttachment: action('downloadAttachment'),
+  doubleCheckMissingQuoteReference: action('doubleCheckMissingQuoteReference'),
   kickOffAttachmentDownload: action('kickOffAttachmentDownload'),
   markAttachmentAsCorrupted: action('markAttachmentAsCorrupted'),
-  openConversation: () => null,
-  openLink: () => null,
-  reactToMessage: () => null,
+  openConversation: action('openConversation'),
+  openLink: action('openLink'),
+  reactToMessage: action('reactToMessage'),
   renderAudioAttachment: () => <div>*AudioAttachment*</div>,
   renderEmojiPicker: () => <div />,
-  replyToMessage: () => null,
-  retrySend: () => null,
-  showContactDetail: () => null,
-  showContactModal: () => null,
-  showExpiredIncomingTapToViewToast: () => null,
-  showExpiredOutgoingTapToViewToast: () => null,
-  showForwardMessageModal: () => null,
-  showVisualAttachment: () => null,
+  replyToMessage: action('replyToMessage'),
+  retrySend: action('retrySend'),
+  showContactDetail: action('showContactDetail'),
+  showContactModal: action('showContactModal'),
+  showExpiredIncomingTapToViewToast: action(
+    'showExpiredIncomingTapToViewToast'
+  ),
+  showExpiredOutgoingTapToViewToast: action(
+    'showExpiredOutgoingTapToViewToast'
+  ),
+  showForwardMessageModal: action('showForwardMessageModal'),
+  showVisualAttachment: action('showVisualAttachment'),
 });
 
 story.add('Delivered Incoming', () => {
@@ -102,13 +110,11 @@ story.add('Message Statuses', () => {
     contacts: [
       {
         ...getDefaultConversation({
-          color: 'green',
+          color: 'forest',
           title: 'Max',
         }),
         isOutgoingKeyError: false,
         isUnidentifiedDelivery: false,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'sent',
       },
       {
@@ -118,41 +124,33 @@ story.add('Message Statuses', () => {
         }),
         isOutgoingKeyError: false,
         isUnidentifiedDelivery: false,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'sending',
       },
       {
         ...getDefaultConversation({
-          color: 'brown',
+          color: 'burlap',
           title: 'Terry',
         }),
         isOutgoingKeyError: false,
         isUnidentifiedDelivery: false,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'partial-sent',
       },
       {
         ...getDefaultConversation({
-          color: 'light_green',
+          color: 'wintergreen',
           title: 'Theo',
         }),
         isOutgoingKeyError: false,
         isUnidentifiedDelivery: false,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'delivered',
       },
       {
         ...getDefaultConversation({
-          color: 'blue_grey',
+          color: 'steel',
           title: 'Nikki',
         }),
         isOutgoingKeyError: false,
         isUnidentifiedDelivery: false,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'read',
       },
     ],
@@ -205,13 +203,11 @@ story.add('All Errors', () => {
     contacts: [
       {
         ...getDefaultConversation({
-          color: 'green',
+          color: 'forest',
           title: 'Max',
         }),
         isOutgoingKeyError: true,
         isUnidentifiedDelivery: false,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'error',
       },
       {
@@ -227,19 +223,15 @@ story.add('All Errors', () => {
         ],
         isOutgoingKeyError: false,
         isUnidentifiedDelivery: true,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'error',
       },
       {
         ...getDefaultConversation({
-          color: 'brown',
+          color: 'taupe',
           title: 'Terry',
         }),
         isOutgoingKeyError: true,
         isUnidentifiedDelivery: true,
-        onSendAnyway: action('onSendAnyway'),
-        onShowSafetyNumber: action('onShowSafetyNumber'),
         status: 'error',
       },
     ],

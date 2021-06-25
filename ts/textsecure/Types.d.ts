@@ -11,6 +11,21 @@ export {
   UnprocessedUpdateType,
 } from '../sql/Interface';
 
+export type StorageServiceCallOptionsType = {
+  credentials?: StorageServiceCredentials;
+  greaterThanVersion?: number;
+};
+
+export type StorageServiceCredentials = {
+  username: string;
+  password: string;
+};
+
+export type DeviceType = {
+  id: number;
+  identifier: string;
+};
+
 // How the legacy APIs generate these types
 
 export type CompatSignedPreKeyType = {
@@ -39,3 +54,5 @@ export type OuterSignedPrekeyType = {
   privKey: ArrayBuffer;
   pubKey: ArrayBuffer;
 };
+
+export type SessionResetsType = Record<string, number>;

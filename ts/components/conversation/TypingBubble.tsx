@@ -48,28 +48,26 @@ export class TypingBubble extends React.PureComponent<Props> {
 
     return (
       <div className="module-message__author-avatar-container">
-        <div className="module-message__author-avatar">
-          <Avatar
-            acceptedMessageRequest={acceptedMessageRequest}
-            avatarPath={avatarPath}
-            color={color}
-            conversationType="direct"
-            i18n={i18n}
-            isMe={isMe}
-            name={name}
-            phoneNumber={phoneNumber}
-            profileName={profileName}
-            title={title}
-            sharedGroupNames={sharedGroupNames}
-            size={28}
-          />
-        </div>
+        <Avatar
+          acceptedMessageRequest={acceptedMessageRequest}
+          avatarPath={avatarPath}
+          color={color}
+          conversationType="direct"
+          i18n={i18n}
+          isMe={isMe}
+          name={name}
+          phoneNumber={phoneNumber}
+          profileName={profileName}
+          title={title}
+          sharedGroupNames={sharedGroupNames}
+          size={28}
+        />
       </div>
     );
   }
 
   public render(): JSX.Element {
-    const { i18n, color, conversationType } = this.props;
+    const { i18n, conversationType } = this.props;
     const isGroup = conversationType === 'group';
 
     return (
@@ -85,8 +83,7 @@ export class TypingBubble extends React.PureComponent<Props> {
           <div
             className={classNames(
               'module-message__container',
-              'module-message__container--incoming',
-              `module-message__container--incoming-${color}`
+              'module-message__container--incoming'
             )}
           >
             <div className="module-message__typing-container">

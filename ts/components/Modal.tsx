@@ -9,12 +9,14 @@ import { LocalizerType } from '../types/Util';
 import { ModalHost } from './ModalHost';
 import { Theme } from '../util/theme';
 import { getClassNamesFor } from '../util/getClassNamesFor';
+import { useHasWrapped } from '../util/hooks';
 
 type PropsType = {
   children: ReactNode;
   hasXButton?: boolean;
   i18n: LocalizerType;
   moduleClassName?: string;
+  noMouseClose?: boolean;
   onClose?: () => void;
   title?: ReactNode;
   theme?: Theme;
@@ -27,6 +29,7 @@ export function Modal({
   hasXButton,
   i18n,
   moduleClassName,
+  noMouseClose,
   onClose = noop,
   title,
   theme,
@@ -37,7 +40,7 @@ export function Modal({
   const getClassName = getClassNamesFor(BASE_CLASS_NAME, moduleClassName);
 
   return (
-    <ModalHost onClose={onClose} theme={theme}>
+    <ModalHost noMouseClose={noMouseClose} onClose={onClose} theme={theme}>
       <div
         className={classNames(
           getClassName(''),
@@ -85,16 +88,29 @@ export function Modal({
   );
 }
 
-Modal.Footer = ({
+Modal.ButtonFooter = function ButtonFooter({
   children,
   moduleClassName,
 }: Readonly<{
   children: ReactNode;
   moduleClassName?: string;
-}>): ReactElement => (
-  <div
-    className={getClassNamesFor(BASE_CLASS_NAME, moduleClassName)('__footer')}
-  >
-    {children}
-  </div>
-);
+}>): ReactElement {
+  const [ref, hasWrapped] = useHasWrapped<HTMLDivElement>();
+
+  const className = getClassNamesFor(
+    BASE_CLASS_NAME,
+    moduleClassName
+  )('__button-footer');
+
+  return (
+    <div
+      className={classNames(
+        className,
+        hasWrapped ? `${className}--one-button-per-line` : undefined
+      )}
+      ref={ref}
+    >
+      {children}
+    </div>
+  );
+};

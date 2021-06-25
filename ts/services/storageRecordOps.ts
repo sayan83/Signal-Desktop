@@ -9,6 +9,7 @@ import {
   deriveMasterKeyFromGroupV1,
   fromEncodedBinaryToArrayBuffer,
 } from '../Crypto';
+import * as Bytes from '../Bytes';
 import dataInterface from '../sql/Client';
 import {
   AccountRecordClass,
@@ -38,9 +39,17 @@ import {
   getSafeLongFromTimestamp,
   getTimestampFromLong,
 } from '../util/timestampLongUtils';
+import {
+  get as getUniversalExpireTimer,
+  set as setUniversalExpireTimer,
+} from '../util/universalExpireTimer';
 import { ourProfileKeyService } from './ourProfileKey';
+import { isGroupV1, isGroupV2 } from '../util/whatTypeOfConversation';
 
 const { updateConversation } = dataInterface;
+
+// TODO: remove once we move away from ArrayBuffers
+const FIXMEU8 = Uint8Array;
 
 type RecordClass =
   | AccountRecordClass
@@ -182,6 +191,11 @@ export async function toAccountRecord(
     accountRecord.primarySendsSms = Boolean(primarySendsSms);
   }
 
+  const universalExpireTimer = getUniversalExpireTimer();
+  if (universalExpireTimer) {
+    accountRecord.universalExpireTimer = Number(universalExpireTimer);
+  }
+
   const PHONE_NUMBER_SHARING_MODE_ENUM =
     window.textsecure.protobuf.AccountRecord.PhoneNumberSharingMode;
   const phoneNumberSharingMode = parsePhoneNumberSharingMode(
@@ -219,7 +233,7 @@ export async function toAccountRecord(
   }
 
   const pinnedConversations = window.storage
-    .get<Array<string>>('pinnedConversationIds', [])
+    .get('pinnedConversationIds', new Array<string>())
     .map(id => {
       const pinnedConversation = window.ConversationController.get(id);
 
@@ -232,7 +246,7 @@ export async function toAccountRecord(
             uuid: pinnedConversation.get('uuid'),
             e164: pinnedConversation.get('e164'),
           };
-        } else if (pinnedConversation.isGroupV1()) {
+        } else if (isGroupV1(pinnedConversation.attributes)) {
           pinnedConversationRecord.identifier = 'legacyGroupId';
           const groupId = pinnedConversation.get('groupId');
           if (!groupId) {
@@ -243,7 +257,7 @@ export async function toAccountRecord(
           pinnedConversationRecord.legacyGroupId = fromEncodedBinaryToArrayBuffer(
             groupId
           );
-        } else if (pinnedConversation.isGroupV2()) {
+        } else if (isGroupV2(pinnedConversation.attributes)) {
           pinnedConversationRecord.identifier = 'groupMasterKey';
           const masterKey = pinnedConversation.get('masterKey');
           if (!masterKey) {
@@ -499,7 +513,7 @@ export async function mergeGroupV1Record(
   // where the binary representation of its ID matches a v2 record in memory.
   // Here we ensure that the record we're about to process is GV1 otherwise
   // we drop the update.
-  if (conversation && !conversation.isGroupV1()) {
+  if (conversation && !isGroupV1(conversation.attributes)) {
     throw new Error(
       `Record has group type mismatch ${conversation.idForLogging()}`
     );
@@ -510,8 +524,8 @@ export async function mergeGroupV1Record(
     // retrieve the master key and find the conversation locally. If we
     // are successful then we continue setting and applying state.
     const masterKeyBuffer = await deriveMasterKeyFromGroupV1(groupId);
-    const fields = deriveGroupFields(masterKeyBuffer);
-    const derivedGroupV2Id = arrayBufferToBase64(fields.id);
+    const fields = deriveGroupFields(new FIXMEU8(masterKeyBuffer));
+    const derivedGroupV2Id = Bytes.toBase64(fields.id);
 
     window.log.info(
       'storageService.mergeGroupV1Record: failed to find group by v1 id ' +
@@ -556,7 +570,7 @@ export async function mergeGroupV1Record(
 
   let hasPendingChanges: boolean;
 
-  if (conversation.isGroupV1()) {
+  if (isGroupV1(conversation.attributes)) {
     addUnknownFields(groupV1Record, conversation);
 
     hasPendingChanges = doesRecordHavePendingChanges(
@@ -586,12 +600,12 @@ export async function mergeGroupV1Record(
 async function getGroupV2Conversation(
   masterKeyBuffer: ArrayBuffer
 ): Promise<ConversationModel> {
-  const groupFields = deriveGroupFields(masterKeyBuffer);
+  const groupFields = deriveGroupFields(new FIXMEU8(masterKeyBuffer));
 
-  const groupId = arrayBufferToBase64(groupFields.id);
+  const groupId = Bytes.toBase64(groupFields.id);
   const masterKey = arrayBufferToBase64(masterKeyBuffer);
-  const secretParams = arrayBufferToBase64(groupFields.secretParams);
-  const publicParams = arrayBufferToBase64(groupFields.publicParams);
+  const secretParams = Bytes.toBase64(groupFields.secretParams);
+  const publicParams = Bytes.toBase64(groupFields.publicParams);
 
   // First we check for an existing GroupV2 group
   const groupV2 = window.ConversationController.get(groupId);
@@ -675,7 +689,7 @@ export async function mergeGroupV2Record(
   const isFirstSync = !window.storage.get('storageFetchComplete');
   const dropInitialJoinMessage = isFirstSync;
 
-  if (conversation.isGroupV1()) {
+  if (isGroupV1(conversation.attributes)) {
     // If we found a GroupV1 conversation from this incoming GroupV2 record, we need to
     //   migrate it!
 
@@ -811,9 +825,10 @@ export async function mergeAccountRecord(
     sealedSenderIndicators,
     typingIndicators,
     primarySendsSms,
+    universalExpireTimer,
   } = accountRecord;
 
-  window.storage.put('read-receipt-setting', readReceipts);
+  window.storage.put('read-receipt-setting', Boolean(readReceipts));
 
   if (typeof sealedSenderIndicators === 'boolean') {
     window.storage.put('sealedSenderIndicators', sealedSenderIndicators);
@@ -830,6 +845,8 @@ export async function mergeAccountRecord(
   if (typeof primarySendsSms === 'boolean') {
     window.storage.put('primarySendsSms', primarySendsSms);
   }
+
+  setUniversalExpireTimer(universalExpireTimer || 0);
 
   const PHONE_NUMBER_SHARING_MODE_ENUM =
     window.textsecure.protobuf.AccountRecord.PhoneNumberSharingMode;
@@ -875,7 +892,7 @@ export async function mergeAccountRecord(
     );
 
     const missingStoragePinnedConversationIds = window.storage
-      .get<Array<string>>('pinnedConversationIds', [])
+      .get('pinnedConversationIds', new Array<string>())
       .filter(id => !modelPinnedConversationIds.includes(id));
 
     if (missingStoragePinnedConversationIds.length !== 0) {
@@ -931,7 +948,7 @@ export async function mergeAccountRecord(
             }
             const masterKeyBuffer = pinnedConversation.groupMasterKey.toArrayBuffer();
             const groupFields = deriveGroupFields(masterKeyBuffer);
-            const groupId = arrayBufferToBase64(groupFields.id);
+            const groupId = Bytes.toBase64(groupFields.id);
 
             conversationId = groupId;
             break;

@@ -3,12 +3,12 @@
 
 // Captures the globals put in place by preload.js, background.js and others
 
+import { DeepPartial, Store } from 'redux';
 import * as Backbone from 'backbone';
 import * as Underscore from 'underscore';
 import moment from 'moment';
 import PQueue from 'p-queue/dist';
 import { Ref } from 'react';
-import { bindActionCreators } from 'redux';
 import { imageToBlurHash } from './util/imageToBlurHash';
 import * as LinkPreviews from '../js/modules/link_previews.d';
 import * as Util from './util';
@@ -19,7 +19,12 @@ import {
   ReactionAttributesType,
   ReactionModelType,
 } from './model-types.d';
-import { ContactRecordIdentityState, TextSecureType } from './textsecure.d';
+import {
+  ContactRecordIdentityState,
+  TextSecureType,
+  DownloadAttachmentType,
+} from './textsecure.d';
+import { Storage } from './textsecure/Storage';
 import {
   ChallengeHandler,
   IPCRequest as IPCChallengeRequest,
@@ -36,14 +41,14 @@ import { getEnvironment } from './environment';
 import * as zkgroup from './util/zkgroup';
 import { LocalizerType, BodyRangesType, BodyRangeType } from './types/Util';
 import * as Attachment from './types/Attachment';
-import { ColorType } from './types/Colors';
 import * as MIME from './types/MIME';
 import * as Contact from './types/Contact';
 import * as Errors from '../js/modules/types/errors';
 import { ConversationController } from './ConversationController';
 import { ReduxActions } from './state/types';
 import { createStore } from './state/createStore';
-import { createCallManager } from './state/roots/createCallManager';
+import { createApp } from './state/roots/createApp';
+import { createChatColorPicker } from './state/roots/createChatColorPicker';
 import { createCompositionArea } from './state/roots/createCompositionArea';
 import { createContactModal } from './state/roots/createContactModal';
 import { createConversationDetails } from './state/roots/createConversationDetails';
@@ -61,6 +66,7 @@ import { createShortcutGuideModal } from './state/roots/createShortcutGuideModal
 import { createStickerManager } from './state/roots/createStickerManager';
 import { createStickerPreviewModal } from './state/roots/createStickerPreviewModal';
 import { createTimeline } from './state/roots/createTimeline';
+import * as appDuck from './state/ducks/app';
 import * as callingDuck from './state/ducks/calling';
 import * as conversationsDuck from './state/ducks/conversations';
 import * as emojisDuck from './state/ducks/emojis';
@@ -89,6 +95,7 @@ import {
   PropsType as CallingScreenSharingControllerProps,
 } from './components/CallingScreenSharingController';
 import { CaptionEditor } from './components/CaptionEditor';
+import { ChatColorPicker } from './components/ChatColorPicker';
 import { ConfirmationDialog } from './components/ConfirmationDialog';
 import { ContactDetail } from './components/conversation/ContactDetail';
 import { ContactModal } from './components/conversation/ContactModal';
@@ -100,12 +107,20 @@ import { MessageDetail } from './components/conversation/MessageDetail';
 import { ProgressModal } from './components/ProgressModal';
 import { Quote } from './components/conversation/Quote';
 import { StagedLinkPreview } from './components/conversation/StagedLinkPreview';
+import { DisappearingTimeDialog } from './components/conversation/DisappearingTimeDialog';
 import { MIMEType } from './types/MIME';
+import { AttachmentType } from './types/Attachment';
 import { ElectronLocaleType } from './util/mapToSupportLocale';
 import { SignalProtocolStore } from './SignalProtocolStore';
+import { Context as SignalContext } from './context';
 import { StartupQueue } from './util/StartupQueue';
 import * as synchronousCrypto from './util/synchronousCrypto';
+import { SocketStatus } from './types/SocketStatus';
 import SyncRequest from './textsecure/SyncRequest';
+import { ConversationColorType, CustomColorType } from './types/Colors';
+import { MessageController } from './util/MessageController';
+import { isValidGuid } from './util/isValidGuid';
+import { StateType } from './state/reducer';
 
 export { Long } from 'long';
 
@@ -158,6 +173,7 @@ declare global {
       ) => void
     ) => void;
 
+    addSetupMenuItems: () => void;
     attachmentDownloadQueue: Array<MessageModel> | undefined;
     startupProcessingQueue: StartupQueue | undefined;
     baseAttachmentsPath: string;
@@ -187,7 +203,7 @@ declare global {
     getNodeVersion: () => string;
     getServerPublicParams: () => string;
     getSfuUrl: () => string;
-    getSocketStatus: () => number;
+    getSocketStatus: () => SocketStatus;
     getSyncRequest: (timeoutMillis?: number) => SyncRequest;
     getTitle: () => string;
     waitForEmptyEventQueue: () => Promise<void>;
@@ -198,38 +214,36 @@ declare global {
     isAfterVersion: (version: string, anotherVersion: string) => boolean;
     isBeforeVersion: (version: string, anotherVersion: string) => boolean;
     isFullScreen: () => boolean;
-    isValidGuid: (maybeGuid: string | null) => boolean;
+    isValidGuid: typeof isValidGuid;
     isValidE164: (maybeE164: unknown) => boolean;
     libphonenumber: {
       util: {
         getRegionCodeForNumber: (number: string) => string;
         parseNumber: (
           e164: string,
-          regionCode: string
-        ) => typeof window.Signal.Types.PhoneNumber;
+          defaultRegionCode: string
+        ) =>
+          | { isValidNumber: false; error: unknown }
+          | {
+              isValidNumber: true;
+              regionCode: string | undefined;
+              countryCode: string;
+              nationalNumber: string;
+              e164: string;
+            };
       };
       parse: (number: string) => string;
       getRegionCodeForNumber: (number: string) => string;
       format: (number: string, format: PhoneNumberFormat) => string;
     };
-    log: {
-      fatal: LoggerType;
-      info: LoggerType;
-      warn: LoggerType;
-      error: LoggerType;
-      debug: LoggerType;
-      trace: LoggerType;
-      fetch: () => Promise<string>;
-      publish: typeof uploadDebugLogs;
-    };
+    log: LoggerType;
     nodeSetImmediate: typeof setImmediate;
     normalizeUuids: (obj: any, paths: Array<string>, context: string) => void;
     onFullScreenChange: (fullScreen: boolean) => void;
-    owsDesktopApp: WhatIsThis;
     platform: string;
     preloadedImages: Array<WhatIsThis>;
     reduxActions: ReduxActions;
-    reduxStore: WhatIsThis;
+    reduxStore: Store<StateType>;
     registerForActive: (handler: () => void) => void;
     restart: () => void;
     setImmediate: typeof setImmediate;
@@ -240,33 +254,9 @@ declare global {
     setAutoHideMenuBar: (value: WhatIsThis) => void;
     setBadgeCount: (count: number) => void;
     setMenuBarVisibility: (value: WhatIsThis) => void;
-    setSecureInput: (enabled: boolean) => void;
     showConfirmationDialog: (options: ConfirmationDialogViewProps) => void;
     showKeyboardShortcuts: () => void;
-    storage: {
-      addBlockedGroup: (group: string) => void;
-      addBlockedNumber: (number: string) => void;
-      addBlockedUuid: (uuid: string) => void;
-      fetch: () => void;
-      get: {
-        <T = any>(key: string): T | undefined;
-        <T>(key: string, defaultValue: T): T;
-      };
-      getBlockedGroups: () => Array<string>;
-      getBlockedNumbers: () => Array<string>;
-      getBlockedUuids: () => Array<string>;
-      getItemsState: () => WhatIsThis;
-      isBlocked: (number: string) => boolean;
-      isGroupBlocked: (group: unknown) => boolean;
-      isUuidBlocked: (uuid: string) => boolean;
-      onready: (callback: () => unknown) => void;
-      put: (key: string, value: any) => Promise<void>;
-      remove: (key: string) => Promise<void>;
-      removeBlockedGroup: (group: string) => void;
-      removeBlockedNumber: (number: string) => void;
-      removeBlockedUuid: (uuid: string) => void;
-      reset: () => void;
-    };
+    storage: Storage;
     systemTheme: WhatIsThis;
     textsecure: TextSecureType;
     synchronousCrypto: typeof synchronousCrypto;
@@ -290,14 +280,6 @@ declare global {
     };
     Signal: {
       Backbone: any;
-      AttachmentDownloads: {
-        addJob: <T = unknown>(
-          attachment: unknown,
-          options: unknown
-        ) => Promise<T>;
-        start: (options: WhatIsThis) => void;
-        stop: () => void;
-      };
       Crypto: typeof Crypto;
       Curve: typeof Curve;
       Data: typeof Data;
@@ -315,6 +297,7 @@ declare global {
         ) => void;
         onTimeout: (timestamp: number, cb: () => void, id?: string) => string;
         removeTimeout: (uuid: string) => void;
+        retryPlaceholders?: Util.RetryPlaceholders;
         runStorageServiceSyncJob: () => Promise<void>;
         storageServiceUploadJob: () => void;
       };
@@ -331,6 +314,9 @@ declare global {
         loadStickerData: (sticker: unknown) => WhatIsThis;
         readStickerData: (path: string) => Promise<ArrayBuffer>;
         upgradeMessageSchema: (attributes: unknown) => WhatIsThis;
+        processNewAttachment: (
+          attachment: DownloadAttachmentType
+        ) => Promise<AttachmentType>;
 
         copyIntoTempDirectory: any;
         deleteDraftFile: any;
@@ -423,20 +409,6 @@ declare global {
             options: unknown
           ) => Promise<WhatIsThis>;
         };
-        PhoneNumber: {
-          format: (
-            identifier: string,
-            options: Record<string, unknown>
-          ) => string;
-          isValidNumber(
-            phoneNumber: string,
-            options?: {
-              regionCode?: string;
-            }
-          ): boolean;
-          e164: string;
-          error: string;
-        };
         Errors: typeof Errors;
         Message: {
           CURRENT_SCHEMA_VERSION: number;
@@ -475,6 +447,7 @@ declare global {
       Components: {
         AttachmentList: typeof AttachmentList;
         CaptionEditor: typeof CaptionEditor;
+        ChatColorPicker: typeof ChatColorPicker;
         ConfirmationDialog: typeof ConfirmationDialog;
         ContactDetail: typeof ContactDetail;
         ContactModal: typeof ContactModal;
@@ -486,6 +459,7 @@ declare global {
         ProgressModal: typeof ProgressModal;
         Quote: typeof Quote;
         StagedLinkPreview: typeof StagedLinkPreview;
+        DisappearingTimeDialog: typeof DisappearingTimeDialog;
       };
       OS: typeof OS;
       Workflow: {
@@ -498,10 +472,10 @@ declare global {
       };
       Views: WhatIsThis;
       State: {
-        bindActionCreators: typeof bindActionCreators;
         createStore: typeof createStore;
         Roots: {
-          createCallManager: typeof createCallManager;
+          createApp: typeof createApp;
+          createChatColorPicker: typeof createChatColorPicker;
           createCompositionArea: typeof createCompositionArea;
           createContactModal: typeof createContactModal;
           createConversationDetails: typeof createConversationDetails;
@@ -521,6 +495,7 @@ declare global {
           createTimeline: typeof createTimeline;
         };
         Ducks: {
+          app: typeof appDuck;
           calling: typeof callingDuck;
           conversations: typeof conversationsDuck;
           emojis: typeof emojisDuck;
@@ -546,21 +521,15 @@ declare global {
       };
       challengeHandler: ChallengeHandler;
     };
+    SignalContext: SignalContext;
 
     ConversationController: ConversationController;
     Events: WhatIsThis;
-    MessageController: MessageControllerType;
+    MessageController: MessageController;
     SignalProtocolStore: typeof SignalProtocolStore;
     WebAPI: WebAPIConnectType;
     Whisper: WhisperType;
 
-    AccountCache: Record<string, boolean>;
-    AccountJobs: Record<string, Promise<void>>;
-
-    doesAccountCheckJobExist: (number: string) => boolean;
-    checkForSignalAccount: (number: string) => Promise<void>;
-    isSignalAccountCheckComplete: (number: string) => boolean;
-    hasSignalAccount: (number: string) => boolean;
     getServerTrustRoot: () => WhatIsThis;
     readyForUpdates: () => void;
     logAppLoadedEvent: (options: { processedCount?: number }) => void;
@@ -583,6 +552,20 @@ declare global {
   interface Error {
     originalError?: Event;
   }
+
+  // Uint8Array and ArrayBuffer are type-compatible in TypeScript's covariant
+  // type checker, but in reality they are not. Let's assert correct use!
+  interface Uint8Array {
+    __uint8array: never;
+  }
+
+  interface ArrayBuffer {
+    __array_buffer: never;
+  }
+
+  interface SharedArrayBuffer {
+    __array_buffer: never;
+  }
 }
 
 export type DCodeIOType = {
@@ -600,14 +583,6 @@ export type DCodeIOType = {
     isLong: (obj: unknown) => obj is Long;
   };
   ProtoBuf: WhatIsThis;
-};
-
-type MessageControllerType = {
-  findBySender: (sender: string) => MessageModel | null;
-  findBySentAt: (sentAt: number) => MessageModel | null;
-  getById: (id: string) => MessageModel | undefined;
-  register: (id: string, model: MessageModel) => MessageModel;
-  unregister: (id: string) => void;
 };
 
 export class CertificateValidatorType {
@@ -651,7 +626,18 @@ export class CanvasVideoRenderer {
   constructor(canvas: Ref<HTMLCanvasElement>);
 }
 
-export type LoggerType = (...args: Array<unknown>) => void;
+export type LoggerType = {
+  fatal: LogFunctionType;
+  info: LogFunctionType;
+  warn: LogFunctionType;
+  error: LogFunctionType;
+  debug: LogFunctionType;
+  trace: LogFunctionType;
+  fetch: () => Promise<string>;
+  publish: typeof uploadDebugLogs;
+};
+
+export type LogFunctionType = (...args: Array<unknown>) => void;
 
 export type WhisperType = {
   events: {
@@ -666,7 +652,6 @@ export type WhisperType = {
       reject: Function
     ) => void;
   };
-  GroupConversationCollection: typeof ConversationModelCollectionType;
   ConversationCollection: typeof ConversationModelCollectionType;
   ConversationCollectionType: ConversationModelCollectionType;
   Conversation: typeof ConversationModel;
@@ -687,13 +672,14 @@ export type WhisperType = {
   ConversationArchivedToast: WhatIsThis;
   ConversationUnarchivedToast: WhatIsThis;
   ConversationMarkedUnreadToast: WhatIsThis;
-  AppView: WhatIsThis;
   WallClockListener: WhatIsThis;
-  MessageRequests: WhatIsThis;
   BannerView: any;
   RecorderView: any;
   GroupMemberList: any;
   GroupLinkCopiedToast: typeof Backbone.View;
+  InboxView: typeof window.Whisper.View;
+  InstallView: typeof window.Whisper.View;
+  StandaloneRegistrationView: typeof window.Whisper.View;
   KeyVerificationPanelView: any;
   SafetyNumberChangeDialogView: any;
   BodyRangesType: BodyRangesType;
@@ -711,42 +697,6 @@ export type WhisperType = {
       event: string,
       callback: (id: string, messageId: string) => void
     ) => void;
-  };
-
-  DeliveryReceipts: {
-    add: (receipt: WhatIsThis) => void;
-    forMessage: (conversation: unknown, message: unknown) => Array<WhatIsThis>;
-    onReceipt: (receipt: WhatIsThis) => void;
-  };
-
-  ReadReceipts: {
-    add: (receipt: WhatIsThis) => WhatIsThis;
-    forMessage: (conversation: unknown, message: unknown) => Array<WhatIsThis>;
-    onReceipt: (receipt: WhatIsThis) => void;
-  };
-
-  ReadSyncs: {
-    add: (sync: WhatIsThis) => WhatIsThis;
-    forMessage: (message: unknown) => WhatIsThis;
-    onReceipt: (receipt: WhatIsThis) => WhatIsThis;
-  };
-
-  ViewSyncs: {
-    add: (sync: WhatIsThis) => WhatIsThis;
-    forMessage: (message: unknown) => Array<WhatIsThis>;
-    onSync: (sync: WhatIsThis) => WhatIsThis;
-  };
-
-  Reactions: {
-    forMessage: (message: unknown) => Array<ReactionModelType>;
-    add: (reaction: ReactionAttributesType) => ReactionModelType;
-    onReaction: (reactionModel: ReactionModelType) => ReactionAttributesType;
-  };
-
-  Deletes: {
-    add: (model: WhatIsThis) => WhatIsThis;
-    forMessage: (message: unknown) => Array<WhatIsThis>;
-    onDelete: (model: WhatIsThis) => void;
   };
 
   IdenticonSVGView: WhatIsThis;
@@ -792,4 +742,5 @@ export type WhisperType = {
   View: typeof Backbone.View & {
     Templates: Record<string, string>;
   };
+  DisappearingTimeDialog: typeof window.Whisper.View | undefined;
 };

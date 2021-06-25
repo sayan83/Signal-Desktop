@@ -13,6 +13,7 @@ import {
 } from 'react-contextmenu';
 
 import { Emojify } from './Emojify';
+import { DisappearingTimeDialog } from './DisappearingTimeDialog';
 import { Avatar, AvatarSize } from '../Avatar';
 import { InContactsIcon } from '../InContactsIcon';
 
@@ -22,6 +23,7 @@ import { MuteOption, getMuteOptions } from '../../util/getMuteOptions';
 import * as expirationTimer from '../../util/expirationTimer';
 import { isMuted } from '../../util/isMuted';
 import { missingCaseError } from '../../util/missingCaseError';
+import { isInSystemContacts } from '../../util/isInSystemContacts';
 
 export enum OutgoingCallButtonStyle {
   None,
@@ -35,6 +37,7 @@ export type PropsDataType = {
   isMissingMandatoryProfileSharing?: boolean;
   outgoingCallButtonStyle: OutgoingCallButtonStyle;
   showBackButton?: boolean;
+  isSMSOnly?: boolean;
 } & Pick<
   ConversationType,
   | 'acceptedMessageRequest'
@@ -71,6 +74,7 @@ export type PropsActionsType = {
   onOutgoingVideoCallInConversation: () => void;
   onSetPin: (value: boolean) => void;
 
+  onShowChatColorEditor: () => void;
   onShowConversationDetails: () => void;
   onShowSafetyNumber: () => void;
   onShowAllMedia: () => void;
@@ -90,9 +94,17 @@ export type PropsType = PropsDataType &
   PropsActionsType &
   PropsHousekeepingType;
 
+enum ModalState {
+  NothingOpen,
+  CustomDisappearingTimeout,
+}
+
 type StateType = {
   isNarrow: boolean;
+  modalState: ModalState;
 };
+
+const TIMER_ITEM_CLASS = 'module-ConversationHeader__disappearing-timer__item';
 
 export class ConversationHeader extends React.Component<PropsType, StateType> {
   private showMenuBound: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -104,7 +116,7 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
   public constructor(props: PropsType) {
     super(props);
 
-    this.state = { isNarrow: false };
+    this.state = { isNarrow: false, modalState: ModalState.NothingOpen };
 
     this.menuTriggerRef = React.createRef();
     this.showMenuBound = this.showMenu.bind(this);
@@ -144,12 +156,10 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
       );
     }
 
-    const shouldShowIcon = Boolean(name && type === 'direct');
-
     return (
       <div className="module-ConversationHeader__header__info__title">
         <Emojify text={title} />
-        {shouldShowIcon ? (
+        {isInSystemContacts({ name, type }) ? (
           <InContactsIcon
             className="module-ConversationHeader__header__info__title__in-contacts-icon"
             i18n={i18n}
@@ -353,6 +363,7 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
       i18n,
       acceptedMessageRequest,
       canChangeTimer,
+      expireTimer,
       isArchived,
       isMe,
       isPinned,
@@ -367,6 +378,7 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
       onSetDisappearingMessages,
       onSetMuteNotifications,
       onShowAllMedia,
+      onShowChatColorEditor,
       onShowConversationDetails,
       onShowGroupMembers,
       onShowSafetyNumber,
@@ -424,23 +436,60 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
 
     const hasGV2AdminEnabled = isGroup && groupVersion === 2;
 
+    const isActiveExpireTimer = (value: number): boolean => {
+      if (!expireTimer) {
+        return value === 0;
+      }
+
+      // Custom time...
+      if (value === -1) {
+        return !expirationTimer.DEFAULT_DURATIONS_SET.has(expireTimer);
+      }
+      return value === expireTimer;
+    };
+
+    const expireDurations: ReadonlyArray<ReactNode> = [
+      ...expirationTimer.DEFAULT_DURATIONS_IN_SECONDS,
+      -1,
+    ].map((seconds: number) => {
+      let text: string;
+
+      if (seconds === -1) {
+        text = i18n('customDisappearingTimeOption');
+      } else {
+        text = expirationTimer.format(i18n, seconds, {
+          capitalizeOff: true,
+        });
+      }
+
+      const onDurationClick = () => {
+        if (seconds === -1) {
+          this.setState({
+            modalState: ModalState.CustomDisappearingTimeout,
+          });
+        } else {
+          onSetDisappearingMessages(seconds);
+        }
+      };
+
+      return (
+        <MenuItem key={seconds} onClick={onDurationClick}>
+          <div
+            className={classNames(
+              TIMER_ITEM_CLASS,
+              isActiveExpireTimer(seconds) && `${TIMER_ITEM_CLASS}--active`
+            )}
+          >
+            {text}
+          </div>
+        </MenuItem>
+      );
+    });
+
     return (
       <ContextMenu id={triggerId}>
         {disableTimerChanges ? null : (
-          <SubMenu title={disappearingTitle}>
-            {expirationTimer.DEFAULT_DURATIONS_IN_SECONDS.map(
-              (seconds: number) => (
-                <MenuItem
-                  key={seconds}
-                  onClick={() => {
-                    onSetDisappearingMessages(seconds);
-                  }}
-                >
-                  {expirationTimer.format(i18n, seconds)}
-                </MenuItem>
-              )
-            )}
-          </SubMenu>
+          <SubMenu title={disappearingTitle}>{expireDurations}</SubMenu>
         )}
         <SubMenu title={muteTitle}>
           {muteOptions.map(item => (
@@ -455,6 +504,11 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
             </MenuItem>
           ))}
         </SubMenu>
+        {!isGroup ? (
+          <MenuItem onClick={onShowChatColorEditor}>
+            {i18n('showChatColorEditor')}
+          </MenuItem>
+        ) : null}
         {hasGV2AdminEnabled ? (
           <MenuItem onClick={onShowConversationDetails}>
             {i18n('showConversationDetails')}
@@ -570,36 +624,64 @@ export class ConversationHeader extends React.Component<PropsType, StateType> {
   }
 
   public render(): ReactNode {
-    const { id } = this.props;
-    const { isNarrow } = this.state;
+    const {
+      id,
+      isSMSOnly,
+      i18n,
+      onSetDisappearingMessages,
+      expireTimer,
+    } = this.props;
+    const { isNarrow, modalState } = this.state;
     const triggerId = `conversation-${id}`;
 
+    let modalNode: ReactNode;
+    if (modalState === ModalState.NothingOpen) {
+      modalNode = undefined;
+    } else if (modalState === ModalState.CustomDisappearingTimeout) {
+      modalNode = (
+        <DisappearingTimeDialog
+          i18n={i18n}
+          initialValue={expireTimer}
+          onSubmit={value => {
+            this.setState({ modalState: ModalState.NothingOpen });
+            onSetDisappearingMessages(value);
+          }}
+          onClose={() => this.setState({ modalState: ModalState.NothingOpen })}
+        />
+      );
+    } else {
+      throw missingCaseError(modalState);
+    }
+
     return (
-      <Measure
-        bounds
-        onResize={({ bounds }) => {
-          if (!bounds || !bounds.width) {
-            return;
-          }
-          this.setState({ isNarrow: bounds.width < 500 });
-        }}
-      >
-        {({ measureRef }) => (
-          <div
-            className={classNames('module-ConversationHeader', {
-              'module-ConversationHeader--narrow': isNarrow,
-            })}
-            ref={measureRef}
-          >
-            {this.renderBackButton()}
-            {this.renderHeader()}
-            {this.renderOutgoingCallButtons()}
-            {this.renderSearchButton()}
-            {this.renderMoreButton(triggerId)}
-            {this.renderMenu(triggerId)}
-          </div>
-        )}
-      </Measure>
+      <>
+        {modalNode}
+        <Measure
+          bounds
+          onResize={({ bounds }) => {
+            if (!bounds || !bounds.width) {
+              return;
+            }
+            this.setState({ isNarrow: bounds.width < 500 });
+          }}
+        >
+          {({ measureRef }) => (
+            <div
+              className={classNames('module-ConversationHeader', {
+                'module-ConversationHeader--narrow': isNarrow,
+              })}
+              ref={measureRef}
+            >
+              {this.renderBackButton()}
+              {this.renderHeader()}
+              {!isSMSOnly && this.renderOutgoingCallButtons()}
+              {this.renderSearchButton()}
+              {this.renderMoreButton(triggerId)}
+              {this.renderMenu(triggerId)}
+            </div>
+          )}
+        </Measure>
+      </>
     );
   }
 }

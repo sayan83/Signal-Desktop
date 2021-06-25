@@ -9,7 +9,7 @@ import { boolean, number, select, text } from '@storybook/addon-knobs';
 import { storiesOf } from '@storybook/react';
 
 import { SignalService } from '../../protobuf';
-import { Colors } from '../../types/Colors';
+import { ConversationColors } from '../../types/Colors';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { Message, Props, AudioAttachmentProps } from './Message';
 import {
@@ -70,17 +70,18 @@ const renderAudioAttachment: Props['renderAudioAttachment'] = props => (
 
 const createProps = (overrideProps: Partial<Props> = {}): Props => ({
   attachments: overrideProps.attachments,
-  author: overrideProps.author || {
-    ...getDefaultConversation(),
-    color: select('authorColor', Colors, 'red'),
-  },
+  author: overrideProps.author || getDefaultConversation(),
   reducedMotion: boolean('reducedMotion', false),
   bodyRanges: overrideProps.bodyRanges,
   canReply: true,
   canDownload: true,
   canDeleteForEveryone: overrideProps.canDeleteForEveryone || false,
+  checkForAccount: action('checkForAccount'),
   clearSelectedMessage: action('clearSelectedMessage'),
   collapseMetadata: overrideProps.collapseMetadata,
+  conversationColor:
+    overrideProps.conversationColor ||
+    select('conversationColor', ConversationColors, ConversationColors[0]),
   conversationId: text('conversationId', overrideProps.conversationId || ''),
   conversationType: overrideProps.conversationType || 'direct',
   deletedForEveryone: overrideProps.deletedForEveryone,
@@ -90,6 +91,7 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
   disableScroll: overrideProps.disableScroll,
   direction: overrideProps.direction || 'incoming',
   displayTapToViewMessage: action('displayTapToViewMessage'),
+  doubleCheckMissingQuoteReference: action('doubleCheckMissingQuoteReference'),
   downloadAttachment: action('downloadAttachment'),
   expirationLength:
     number('expirationLength', overrideProps.expirationLength || 0) ||
@@ -114,6 +116,7 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
   isTapToViewExpired: overrideProps.isTapToViewExpired,
   kickOffAttachmentDownload: action('kickOffAttachmentDownload'),
   markAttachmentAsCorrupted: action('markAttachmentAsCorrupted'),
+  onHeightChange: action('onHeightChange'),
   openConversation: action('openConversation'),
   openLink: action('openLink'),
   previews: overrideProps.previews || [],
@@ -137,7 +140,7 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
   showMessageDetail: action('showMessageDetail'),
   showVisualAttachment: action('showVisualAttachment'),
   status: overrideProps.status || 'sent',
-  text: text('text', overrideProps.text || ''),
+  text: overrideProps.text || text('text', ''),
   textPending: boolean('textPending', overrideProps.textPending || false),
   timestamp: number('timestamp', overrideProps.timestamp || Date.now()),
 });
@@ -717,6 +720,44 @@ story.add('Image', () => {
   return renderBothDirections(props);
 });
 
+story.add('Multiple Images', () => {
+  const props = createProps({
+    attachments: [
+      {
+        url: '/fixtures/tina-rolf-269345-unsplash.jpg',
+        fileName: 'tina-rolf-269345-unsplash.jpg',
+        contentType: IMAGE_JPEG,
+        width: 128,
+        height: 128,
+      },
+      {
+        url: '/fixtures/tina-rolf-269345-unsplash.jpg',
+        fileName: 'tina-rolf-269345-unsplash.jpg',
+        contentType: IMAGE_JPEG,
+        width: 128,
+        height: 128,
+      },
+      {
+        url: '/fixtures/tina-rolf-269345-unsplash.jpg',
+        fileName: 'tina-rolf-269345-unsplash.jpg',
+        contentType: IMAGE_JPEG,
+        width: 128,
+        height: 128,
+      },
+      {
+        url: '/fixtures/tina-rolf-269345-unsplash.jpg',
+        fileName: 'tina-rolf-269345-unsplash.jpg',
+        contentType: IMAGE_JPEG,
+        width: 128,
+        height: 128,
+      },
+    ],
+    status: 'sent',
+  });
+
+  return renderBothDirections(props);
+});
+
 story.add('Image with Caption', () => {
   const props = createProps({
     attachments: [
@@ -1007,14 +1048,15 @@ story.add('Dangerous File Type', () => {
 story.add('Colors', () => {
   return (
     <>
-      {Colors.map(color => (
-        <Message
-          {...createProps({
-            author: getDefaultConversation({ color }),
-            text:
-              'Hello there from a pal! I am sending a long message so that it will wrap a bit, since I like that look.',
-          })}
-        />
+      {ConversationColors.map(color => (
+        <div key={color}>
+          {renderBothDirections(
+            createProps({
+              conversationColor: color,
+              text: `Here is a preview of the chat color: ${color}. The color is visible to only you.`,
+            })
+          )}
+        </div>
       ))}
     </>
   );
@@ -1081,3 +1123,25 @@ story.add('Not approved, with link preview', () => {
 
   return renderBothDirections(props);
 });
+
+story.add('Custom Color', () => (
+  <>
+    <Message
+      {...createProps({ text: 'Solid.' })}
+      direction="outgoing"
+      customColor={{
+        start: { hue: 82, saturation: 35 },
+      }}
+    />
+    <br style={{ clear: 'both' }} />
+    <Message
+      {...createProps({ text: 'Gradient.' })}
+      direction="outgoing"
+      customColor={{
+        deg: 192,
+        start: { hue: 304, saturation: 85 },
+        end: { hue: 231, saturation: 76 },
+      }}
+    />
+  </>
+));

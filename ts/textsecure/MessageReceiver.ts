@@ -10,12 +10,16 @@
 /* eslint-disable max-classes-per-file */
 /* eslint-disable no-restricted-syntax */
 
-import { isNumber, map, omit, noop } from 'lodash';
+import { isNumber, map, omit } from 'lodash';
 import PQueue from 'p-queue';
 import { v4 as getGuid } from 'uuid';
+import { connection as WebSocket } from 'websocket';
+import { z } from 'zod';
 
 import {
+  DecryptionErrorMessage,
   groupDecrypt,
+  PlaintextContent,
   PreKeySignalMessage,
   processSenderKeyDistributionMessage,
   ProtocolAddress,
@@ -37,7 +41,9 @@ import {
   Sessions,
   SignedPreKeys,
 } from '../LibSignalStores';
+import { BackOff, FIBONACCI_TIMEOUTS } from '../util/BackOff';
 import { BatcherType, createBatcher } from '../util/batcher';
+import { sleep } from '../util/sleep';
 import { parseIntOrThrow } from '../util/parseIntOrThrow';
 import { Zone } from '../util/Zone';
 import EventTarget from './EventTarget';
@@ -46,11 +52,13 @@ import utils from './Helpers';
 import WebSocketResource, {
   IncomingWebSocketRequest,
 } from './WebsocketResources';
+import { ConnectTimeoutError } from './Errors';
+import * as Bytes from '../Bytes';
 import Crypto from './Crypto';
 import { deriveMasterKeyFromGroupV1, typedArrayToArrayBuffer } from '../Crypto';
 import { ContactBuffer, GroupBuffer } from './ContactsParser';
-import { assert } from '../util/assert';
 import { isByteBufferEmpty } from '../util/isByteBufferEmpty';
+import { SocketStatus } from '../types/SocketStatus';
 
 import {
   AttachmentPointerClass,
@@ -66,15 +74,40 @@ import {
 } from '../textsecure.d';
 import { ByteBufferClass } from '../window.d';
 
-import { WebSocket } from './WebSocket';
-
 import { deriveGroupFields, MASTER_KEY_LENGTH } from '../groups';
+
+// TODO: remove once we move away from ArrayBuffers
+const FIXMEU8 = Uint8Array;
 
 const GROUPV1_ID_LENGTH = 16;
 const GROUPV2_ID_LENGTH = 32;
 const RETRY_TIMEOUT = 2 * 60 * 1000;
 
-type SessionResetsType = Record<string, number>;
+const decryptionErrorTypeSchema = z
+  .object({
+    cipherTextBytes: z.instanceof(ArrayBuffer).optional(),
+    cipherTextType: z.number().optional(),
+    contentHint: z.number().optional(),
+    groupId: z.string().optional(),
+    receivedAtCounter: z.number(),
+    receivedAtDate: z.number(),
+    senderDevice: z.number(),
+    senderUuid: z.string(),
+    timestamp: z.number(),
+  })
+  .passthrough();
+export type DecryptionErrorType = z.infer<typeof decryptionErrorTypeSchema>;
+
+const retryRequestTypeSchema = z
+  .object({
+    groupId: z.string().optional(),
+    requesterUuid: z.string(),
+    requesterDevice: z.number(),
+    senderDevice: z.number(),
+    sentAt: z.number(),
+  })
+  .passthrough();
+export type RetryRequestType = z.infer<typeof retryRequestTypeSchema>;
 
 declare global {
   // We want to extend `Event`, so we need an interface.
@@ -108,6 +141,8 @@ declare global {
     timestamp?: any;
     typing?: any;
     verified?: any;
+    retryRequest?: RetryRequestType;
+    decryptionError?: DecryptionErrorType;
   }
   // We want to extend `Error`, so we need an interface.
   // eslint-disable-next-line no-restricted-syntax
@@ -120,7 +155,7 @@ declare global {
 type CacheAddItemType = {
   envelope: EnvelopeClass;
   data: UnprocessedType;
-  request: IncomingWebSocketRequest;
+  request: Pick<IncomingWebSocketRequest, 'respond'>;
 };
 
 type DecryptedEnvelope = {
@@ -141,11 +176,13 @@ enum TaskType {
 }
 
 class MessageReceiverInner extends EventTarget {
-  _onClose?: (ev: any) => Promise<void>;
+  _onClose?: (code: number, reason: string) => Promise<void>;
+
+  _onError?: (error: Error) => Promise<void>;
 
   appQueue: PQueue;
 
-  cacheAddBatcher: BatcherType<CacheAddItemType>;
+  decryptAndCacheBatcher: BatcherType<CacheAddItemType>;
 
   cacheRemoveBatcher: BatcherType<string>;
 
@@ -157,7 +194,7 @@ class MessageReceiverInner extends EventTarget {
 
   deviceId?: number;
 
-  hasConnected?: boolean;
+  hasConnected = false;
 
   incomingQueue: PQueue;
 
@@ -181,6 +218,8 @@ class MessageReceiverInner extends EventTarget {
 
   socket?: WebSocket;
 
+  socketStatus = SocketStatus.CLOSED;
+
   stoppingProcessing?: boolean;
 
   username: string;
@@ -190,6 +229,8 @@ class MessageReceiverInner extends EventTarget {
   uuid_id?: string;
 
   wsr?: WebSocketResource;
+
+  private readonly reconnectBackOff = new BackOff(FIBONACCI_TIMEOUTS);
 
   constructor(
     oldUsername: string,
@@ -246,14 +287,14 @@ class MessageReceiverInner extends EventTarget {
       timeout: 1000 * 60 * 2,
     });
 
-    this.cacheAddBatcher = createBatcher<CacheAddItemType>({
-      name: 'MessageReceiver.cacheAddBatcher',
+    this.decryptAndCacheBatcher = createBatcher<CacheAddItemType>({
+      name: 'MessageReceiver.decryptAndCacheBatcher',
       wait: 75,
       maxSize: 30,
       processBatch: (items: Array<CacheAddItemType>) => {
         // Not returning the promise here because we don't want to stall
         // the batch.
-        this.cacheAndQueueBatch(items);
+        this.decryptAndCacheBatch(items);
       },
     });
     this.cacheRemoveBatcher = createBatcher<string>({
@@ -262,8 +303,6 @@ class MessageReceiverInner extends EventTarget {
       maxSize: 30,
       processBatch: this.cacheRemoveBatch.bind(this),
     });
-
-    this.cleanupSessionResets();
   }
 
   static stringToArrayBuffer = (string: string): ArrayBuffer =>
@@ -278,13 +317,13 @@ class MessageReceiverInner extends EventTarget {
   static arrayBufferToStringBase64 = (arrayBuffer: ArrayBuffer): string =>
     window.dcodeIO.ByteBuffer.wrap(arrayBuffer).toString('base64');
 
-  connect() {
+  async connect(): Promise<void> {
     if (this.calledClose) {
       return;
     }
 
     // We always process our cache before processing a new websocket message
-    this.encryptedQueue.add(async () => this.queueAllCached());
+    this.incomingQueue.add(async () => this.queueAllCached());
 
     this.count = 0;
     if (this.hasConnected) {
@@ -296,17 +335,48 @@ class MessageReceiverInner extends EventTarget {
 
     this.hasConnected = true;
 
-    if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+    if (this.socket && this.socket.connected) {
       this.socket.close();
+      this.socket = undefined;
       if (this.wsr) {
         this.wsr.close();
+        this.wsr = undefined;
       }
     }
+    this.socketStatus = SocketStatus.CONNECTING;
+
     // initialize the socket and start listening for messages
-    this.socket = this.server.getMessageSocket();
-    this.socket.onclose = this.onclose.bind(this);
-    this.socket.onerror = this.onerror.bind(this);
-    this.socket.onopen = this.onopen.bind(this);
+    try {
+      this.socket = await this.server.getMessageSocket();
+    } catch (error) {
+      this.socketStatus = SocketStatus.CLOSED;
+
+      if (error instanceof ConnectTimeoutError) {
+        await this.onclose(-1, 'Connection timed out');
+        return;
+      }
+
+      const event = new Event('error');
+      event.error = error;
+      await this.dispatchAndWait(event);
+      return;
+    }
+
+    this.socketStatus = SocketStatus.OPEN;
+
+    window.log.info('websocket open');
+    window.logMessageReceiverConnect();
+
+    if (!this._onClose) {
+      this._onClose = this.onclose.bind(this);
+    }
+    if (!this._onError) {
+      this._onError = this.onerror.bind(this);
+    }
+
+    this.socket.on('close', this._onClose);
+    this.socket.on('error', this._onError);
+
     this.wsr = new WebSocketResource(this.socket, {
       handleRequest: this.handleRequest.bind(this),
       keepalive: {
@@ -316,7 +386,6 @@ class MessageReceiverInner extends EventTarget {
     });
 
     // Because sometimes the socket doesn't properly emit its close event
-    this._onClose = this.onclose.bind(this);
     if (this._onClose) {
       this.wsr.addEventListener('close', this._onClose);
     }
@@ -330,15 +399,18 @@ class MessageReceiverInner extends EventTarget {
 
   unregisterBatchers() {
     window.log.info('MessageReceiver: unregister batchers');
-    this.cacheAddBatcher.unregister();
+    this.decryptAndCacheBatcher.unregister();
     this.cacheRemoveBatcher.unregister();
   }
 
   shutdown() {
     if (this.socket) {
-      this.socket.onclose = noop;
-      this.socket.onerror = noop;
-      this.socket.onopen = noop;
+      if (this._onClose) {
+        this.socket.removeListener('close', this._onClose);
+      }
+      if (this._onError) {
+        this.socket.removeListener('error', this._onError);
+      }
 
       this.socket = undefined;
     }
@@ -354,6 +426,7 @@ class MessageReceiverInner extends EventTarget {
   async close() {
     window.log.info('MessageReceiver.close()');
     this.calledClose = true;
+    this.socketStatus = SocketStatus.CLOSING;
 
     // Our WebSocketResource instance will close the socket and emit a 'close' event
     //   if the socket doesn't emit one quickly enough.
@@ -366,13 +439,8 @@ class MessageReceiverInner extends EventTarget {
     return this.drain();
   }
 
-  onopen() {
-    window.log.info('websocket open');
-    window.logMessageReceiverConnect();
-  }
-
-  onerror() {
-    window.log.error('websocket error');
+  async onerror(error: Error): Promise<void> {
+    window.log.error('websocket error', error);
   }
 
   async dispatchAndWait(event: Event) {
@@ -381,35 +449,47 @@ class MessageReceiverInner extends EventTarget {
     return Promise.resolve();
   }
 
-  async onclose(ev: any) {
+  async onclose(code: number, reason: string): Promise<void> {
     window.log.info(
-      'websocket closed',
-      ev.code,
-      ev.reason || '',
+      'MessageReceiver: websocket closed',
+      code,
+      reason || '',
       'calledClose:',
       this.calledClose
     );
 
+    this.socketStatus = SocketStatus.CLOSED;
+
     this.shutdown();
 
     if (this.calledClose) {
-      return Promise.resolve();
+      return;
     }
-    if (ev.code === 3000) {
-      return Promise.resolve();
+    if (code === 3000) {
+      return;
     }
-    if (ev.code === 3001) {
+    if (code === 3001) {
       this.onEmpty();
     }
-    // possible 403 or network issue. Make an request to confirm
-    return this.server
-      .getDevices()
-      .then(this.connect.bind(this)) // No HTTP error? Reconnect
-      .catch(async e => {
-        const event = new Event('error');
-        event.error = e;
-        return this.dispatchAndWait(event);
-      });
+
+    const timeout = this.reconnectBackOff.getAndIncrement();
+
+    window.log.info(`MessageReceiver: reconnecting after ${timeout}ms`);
+    await sleep(timeout);
+
+    // Try to reconnect (if there is an HTTP error - we'll get an
+    // `error` event from `connect()` and hit the secondary retry backoff
+    // logic in `ts/background.ts`)
+    await this.connect();
+
+    // Successfull reconnect, reset the backoff timeouts
+    this.reconnectBackOff.reset();
+  }
+
+  checkSocket(): void {
+    if (this.wsr) {
+      this.wsr.forceKeepAlive();
+    }
   }
 
   handleRequest(request: IncomingWebSocketRequest) {
@@ -484,7 +564,7 @@ class MessageReceiverInner extends EventTarget {
           envelope.serverTimestamp
         );
 
-        this.cacheAndQueue(envelope, plaintext, request);
+        this.decryptAndCache(envelope, plaintext, request);
         this.processedCount += 1;
       } catch (e) {
         request.respond(500, 'Bad encrypted websocket message');
@@ -554,7 +634,7 @@ class MessageReceiverInner extends EventTarget {
   onEmpty() {
     const emitEmpty = async () => {
       await Promise.all([
-        this.cacheAddBatcher.flushAndWait(),
+        this.decryptAndCacheBatcher.flushAndWait(),
         this.cacheRemoveBatcher.flushAndWait(),
       ]);
 
@@ -588,7 +668,7 @@ class MessageReceiverInner extends EventTarget {
     };
 
     const waitForCacheAddBatcher = async () => {
-      await this.cacheAddBatcher.onIdle();
+      await this.decryptAndCacheBatcher.onIdle();
       this.incomingQueue.add(waitForIncomingQueue);
     };
 
@@ -635,11 +715,7 @@ class MessageReceiverInner extends EventTarget {
         envelopePlaintext = MessageReceiverInner.stringToArrayBufferBase64(
           item.envelope
         );
-      } else if (typeof item.envelope === 'string') {
-        assert(
-          item.envelope || item.decrypted,
-          'MessageReceiver.queueCached: empty envelope without decrypted data'
-        );
+      } else if (item.envelope && typeof item.envelope === 'string') {
         envelopePlaintext = MessageReceiverInner.stringToArrayBuffer(
           item.envelope
         );
@@ -686,7 +762,7 @@ class MessageReceiverInner extends EventTarget {
           this.queueDecryptedEnvelope(envelope, payloadPlaintext);
         }, TaskType.Encrypted);
       } else {
-        this.queueCachedEnvelope(envelope);
+        this.queueCachedEnvelope(item, envelope);
       }
     } catch (error) {
       window.log.error(
@@ -698,7 +774,7 @@ class MessageReceiverInner extends EventTarget {
 
       try {
         const { id } = item;
-        await window.textsecure.storage.unprocessed.remove(id);
+        await window.textsecure.storage.protocol.removeUnprocessed(id);
       } catch (deleteError) {
         window.log.error(
           'queueCached error deleting item',
@@ -735,24 +811,24 @@ class MessageReceiverInner extends EventTarget {
     if (this.isEmptied) {
       this.clearRetryTimeout();
       this.retryCachedTimeout = setTimeout(() => {
-        this.encryptedQueue.add(async () => this.queueAllCached());
+        this.incomingQueue.add(async () => this.queueAllCached());
       }, RETRY_TIMEOUT);
     }
   }
 
   async getAllFromCache() {
     window.log.info('getAllFromCache');
-    const count = await window.textsecure.storage.unprocessed.getCount();
+    const count = await window.textsecure.storage.protocol.getUnprocessedCount();
 
     if (count > 1500) {
-      await window.textsecure.storage.unprocessed.removeAll();
+      await window.textsecure.storage.protocol.removeAllUnprocessed();
       window.log.warn(
         `There were ${count} messages in cache. Deleted all instead of reprocessing`
       );
       return [];
     }
 
-    const items = await window.textsecure.storage.unprocessed.getAll();
+    const items = await window.textsecure.storage.protocol.getAllUnprocessed();
     window.log.info('getAllFromCache loaded', items.length, 'saved envelopes');
 
     return Promise.all(
@@ -765,9 +841,9 @@ class MessageReceiverInner extends EventTarget {
               'getAllFromCache final attempt for envelope',
               item.id
             );
-            await window.textsecure.storage.unprocessed.remove(item.id);
+            await window.textsecure.storage.protocol.removeUnprocessed(item.id);
           } else {
-            await window.textsecure.storage.unprocessed.updateAttempts(
+            await window.textsecure.storage.protocol.updateUnprocessedAttempts(
               item.id,
               attempts
             );
@@ -784,14 +860,14 @@ class MessageReceiverInner extends EventTarget {
     );
   }
 
-  async cacheAndQueueBatch(items: Array<CacheAddItemType>) {
-    window.log.info('MessageReceiver.cacheAndQueueBatch', items.length);
+  async decryptAndCacheBatch(items: Array<CacheAddItemType>) {
+    window.log.info('MessageReceiver.decryptAndCacheBatch', items.length);
 
     const decrypted: Array<DecryptedEnvelope> = [];
     const storageProtocol = window.textsecure.storage.protocol;
 
     try {
-      const zone = new Zone('cacheAndQueueBatch', {
+      const zone = new Zone('decryptAndCacheBatch', {
         pendingSessions: true,
         pendingUnprocessed: true,
       });
@@ -822,7 +898,7 @@ class MessageReceiverInner extends EventTarget {
             } catch (error) {
               failed.push(data);
               window.log.error(
-                'cacheAndQueue error when processing the envelope',
+                'decryptAndCache error when processing the envelope',
                 error && error.stack ? error.stack : error
               );
             }
@@ -830,7 +906,7 @@ class MessageReceiverInner extends EventTarget {
         );
 
         window.log.info(
-          'MessageReceiver.cacheAndQueueBatch storing ' +
+          'MessageReceiver.decryptAndCacheBatch storing ' +
             `${decrypted.length} decrypted envelopes`
         );
 
@@ -840,13 +916,10 @@ class MessageReceiverInner extends EventTarget {
             return {
               ...data,
 
-              // We have sucessfully decrypted the message so don't bother with
-              // storing the envelope.
-              envelope: '',
-
               source: envelope.source,
               sourceUuid: envelope.sourceUuid,
               sourceDevice: envelope.sourceDevice,
+              serverGuid: envelope.serverGuid,
               serverTimestamp: envelope.serverTimestamp,
               decrypted: MessageReceiverInner.arrayBufferToStringBase64(
                 plaintext
@@ -862,7 +935,7 @@ class MessageReceiverInner extends EventTarget {
       });
 
       window.log.info(
-        'MessageReceiver.cacheAndQueueBatch acknowledging receipt'
+        'MessageReceiver.decryptAndCacheBatch acknowledging receipt'
       );
 
       // Acknowledge all envelopes
@@ -871,13 +944,13 @@ class MessageReceiverInner extends EventTarget {
           request.respond(200, 'OK');
         } catch (error) {
           window.log.error(
-            'cacheAndQueueBatch: Failed to send 200 to server; still queuing envelope'
+            'decryptAndCacheBatch: Failed to send 200 to server; still queuing envelope'
           );
         }
       }
     } catch (error) {
       window.log.error(
-        'cacheAndQueue error trying to add messages to cache:',
+        'decryptAndCache error trying to add messages to cache:',
         error && error.stack ? error.stack : error
       );
 
@@ -893,19 +966,19 @@ class MessageReceiverInner extends EventTarget {
           await this.queueDecryptedEnvelope(envelope, plaintext);
         } catch (error) {
           window.log.error(
-            'cacheAndQueue error when processing decrypted envelope',
+            'decryptAndCache error when processing decrypted envelope',
             error && error.stack ? error.stack : error
           );
         }
       })
     );
 
-    window.log.info('MessageReceiver.cacheAndQueueBatch fully processed');
+    window.log.info('MessageReceiver.decryptAndCacheBatch fully processed');
 
     this.maybeScheduleRetryTimeout();
   }
 
-  cacheAndQueue(
+  decryptAndCache(
     envelope: EnvelopeClass,
     plaintext: ArrayBuffer,
     request: IncomingWebSocketRequest
@@ -918,7 +991,7 @@ class MessageReceiverInner extends EventTarget {
       timestamp: envelope.receivedAtCounter,
       attempts: 1,
     };
-    this.cacheAddBatcher.add({
+    this.decryptAndCacheBatcher.add({
       request,
       envelope,
       data,
@@ -926,7 +999,7 @@ class MessageReceiverInner extends EventTarget {
   }
 
   async cacheRemoveBatch(items: Array<string>) {
-    await window.textsecure.storage.unprocessed.remove(items);
+    await window.textsecure.storage.protocol.removeUnprocessed(items);
   }
 
   removeFromCache(envelope: EnvelopeClass) {
@@ -944,7 +1017,7 @@ class MessageReceiverInner extends EventTarget {
     const task = this.handleDecryptedEnvelope.bind(this, envelope, plaintext);
     const taskWithTimeout = window.textsecure.createTaskWithTimeout(
       task,
-      `queueEncryptedEnvelope ${id}`
+      `queueDecryptedEnvelope ${id}`
     );
     const promise = this.addToQueue(taskWithTimeout, TaskType.Decrypted);
 
@@ -989,20 +1062,22 @@ class MessageReceiverInner extends EventTarget {
     }
   }
 
-  async queueCachedEnvelope(envelope: EnvelopeClass): Promise<void> {
-    const plaintext = await this.queueEncryptedEnvelope(
-      {
-        sessionStore: new Sessions(),
-        identityKeyStore: new IdentityKeys(),
+  async queueCachedEnvelope(
+    data: UnprocessedType,
+    envelope: EnvelopeClass
+  ): Promise<void> {
+    this.decryptAndCacheBatcher.add({
+      request: {
+        respond(code, status) {
+          window.log.info(
+            'queueCachedEnvelope: fake response ' +
+              `with code ${code} and status ${status}`
+          );
+        },
       },
-      envelope
-    );
-
-    if (!plaintext) {
-      return;
-    }
-
-    await this.queueDecryptedEnvelope(envelope, plaintext);
+      envelope,
+      data,
+    });
   }
 
   // Called after `decryptEnvelope` decrypted the message.
@@ -1055,14 +1130,8 @@ class MessageReceiverInner extends EventTarget {
     throw new Error('Received message with no content and no legacyMessage');
   }
 
-  getStatus() {
-    if (this.socket) {
-      return this.socket.readyState;
-    }
-    if (this.hasConnected) {
-      return WebSocket.CLOSED;
-    }
-    return -1;
+  getStatus(): SocketStatus {
+    return this.socketStatus;
   }
 
   async onDeliveryReceipt(envelope: EnvelopeClass): Promise<void> {
@@ -1102,6 +1171,7 @@ class MessageReceiverInner extends EventTarget {
     envelope: EnvelopeClass,
     ciphertext: ByteBufferClass
   ): Promise<ArrayBuffer | null> {
+    const logId = this.getEnvelopeId(envelope);
     const { serverTrustRoot } = this;
     const envelopeTypeEnum = window.textsecure.protobuf.Envelope.Type;
     const unidentifiedSenderTypeEnum =
@@ -1128,34 +1198,16 @@ class MessageReceiverInner extends EventTarget {
       ArrayBuffer | { isMe: boolean } | { isBlocked: boolean } | undefined
     >;
 
-    if (envelope.type === envelopeTypeEnum.SENDERKEY) {
-      window.log.info('sender key message from', this.getEnvelopeId(envelope));
-      if (!identifier) {
-        throw new Error(
-          'MessageReceiver.decrypt: No identifier for SENDERKEY message'
-        );
-      }
-      if (!sourceDevice) {
-        throw new Error(
-          'MessageReceiver.decrypt: No sourceDevice for SENDERKEY message'
-        );
-      }
+    if (envelope.type === envelopeTypeEnum.PLAINTEXT_CONTENT) {
+      window.log.info(`decrypt/${logId}: plaintext message`);
+      const buffer = Buffer.from(ciphertext.toArrayBuffer());
+      const plaintextContent = PlaintextContent.deserialize(buffer);
 
-      const senderKeyStore = new SenderKeys();
-      const address = `${identifier}.${sourceDevice}`;
-      const messageBuffer = Buffer.from(ciphertext.toArrayBuffer());
-      promise = window.textsecure.storage.protocol.enqueueSenderKeyJob(
-        address,
-        () =>
-          groupDecrypt(
-            ProtocolAddress.new(identifier, sourceDevice),
-            senderKeyStore,
-            messageBuffer
-          ).then(plaintext => this.unpad(typedArrayToArrayBuffer(plaintext))),
-        zone
+      promise = Promise.resolve(
+        this.unpad(typedArrayToArrayBuffer(plaintextContent.body()))
       );
     } else if (envelope.type === envelopeTypeEnum.CIPHERTEXT) {
-      window.log.info('message from', this.getEnvelopeId(envelope));
+      window.log.info(`decrypt/${logId}: ciphertext message`);
       if (!identifier) {
         throw new Error(
           'MessageReceiver.decrypt: No identifier for CIPHERTEXT message'
@@ -1183,7 +1235,7 @@ class MessageReceiverInner extends EventTarget {
         zone
       );
     } else if (envelope.type === envelopeTypeEnum.PREKEY_BUNDLE) {
-      window.log.info('prekey message from', this.getEnvelopeId(envelope));
+      window.log.info(`decrypt/${logId}: prekey message`);
       if (!identifier) {
         throw new Error(
           'MessageReceiver.decrypt: No identifier for PREKEY_BUNDLE message'
@@ -1213,7 +1265,7 @@ class MessageReceiverInner extends EventTarget {
         zone
       );
     } else if (envelope.type === envelopeTypeEnum.UNIDENTIFIED_SENDER) {
-      window.log.info('received unidentified sender message');
+      window.log.info(`decrypt/${logId}: unidentified message`);
       const buffer = Buffer.from(ciphertext.toArrayBuffer());
 
       const decryptSealedSender = async (): Promise<
@@ -1240,12 +1292,22 @@ class MessageReceiverInner extends EventTarget {
           ['sourceUuid'],
           'message_receiver::decrypt::UNIDENTIFIED_SENDER'
         );
+
         // eslint-disable-next-line no-param-reassign
         envelope.sourceDevice = certificate.senderDeviceId();
         // eslint-disable-next-line no-param-reassign
         envelope.unidentifiedDeliveryReceived = !(
           originalSource || originalSourceUuid
         );
+
+        const unidentifiedLogId = this.getEnvelopeId(envelope);
+
+        // eslint-disable-next-line no-param-reassign
+        envelope.contentHint = messageContent.contentHint();
+        // eslint-disable-next-line no-param-reassign
+        envelope.groupId = messageContent.groupId()?.toString('base64');
+        // eslint-disable-next-line no-param-reassign
+        envelope.usmc = messageContent;
 
         if (
           (envelope.source && this.isBlocked(envelope.source)) ||
@@ -1265,8 +1327,25 @@ class MessageReceiverInner extends EventTarget {
 
         if (
           messageContent.msgType() ===
+          unidentifiedSenderTypeEnum.PLAINTEXT_CONTENT
+        ) {
+          window.log.info(
+            `decrypt/${unidentifiedLogId}: unidentified message/plaintext contents`
+          );
+          const plaintextContent = PlaintextContent.deserialize(
+            messageContent.contents()
+          );
+
+          return plaintextContent.body();
+        }
+
+        if (
+          messageContent.msgType() ===
           unidentifiedSenderTypeEnum.SENDERKEY_MESSAGE
         ) {
+          window.log.info(
+            `decrypt/${unidentifiedLogId}: unidentified message/sender key contents`
+          );
           const sealedSenderIdentifier = certificate.senderUuid();
           const sealedSenderSourceDevice = certificate.senderDeviceId();
           const senderKeyStore = new SenderKeys();
@@ -1282,12 +1361,15 @@ class MessageReceiverInner extends EventTarget {
                   sealedSenderSourceDevice
                 ),
                 senderKeyStore,
-                buffer
+                messageContent.contents()
               ),
             zone
           );
         }
 
+        window.log.info(
+          `decrypt/${unidentifiedLogId}: unidentified message/passing to sealedSenderDecryptMessage`
+        );
         const sealedSenderIdentifier = envelope.sourceUuid || envelope.source;
         const address = `${sealedSenderIdentifier}.${envelope.sourceDevice}`;
         return window.textsecure.storage.protocol.enqueueSessionJob(
@@ -1297,7 +1379,7 @@ class MessageReceiverInner extends EventTarget {
               buffer,
               PublicKey.deserialize(Buffer.from(serverTrustRoot)),
               envelope.serverTimestamp,
-              localE164,
+              localE164 || null,
               localUuid,
               localDeviceId,
               sessionStore,
@@ -1377,10 +1459,26 @@ class MessageReceiverInner extends EventTarget {
         }
 
         if (uuid && deviceId) {
-          // It is safe (from deadlocks) to await this call because the session
-          // reset is going to be scheduled on a separate p-queue in
-          // ts/background.ts
-          await this.lightSessionReset(uuid, deviceId);
+          const event = new Event('decryption-error');
+          event.decryptionError = {
+            cipherTextBytes: envelope.usmc
+              ? typedArrayToArrayBuffer(envelope.usmc.contents())
+              : undefined,
+            cipherTextType: envelope.usmc ? envelope.usmc.msgType() : undefined,
+            contentHint: envelope.contentHint,
+            groupId: envelope.groupId,
+            receivedAtCounter: envelope.receivedAtCounter,
+            receivedAtDate: envelope.receivedAtDate,
+            senderDevice: deviceId,
+            senderUuid: uuid,
+            timestamp: envelope.timestamp.toNumber(),
+          };
+
+          // Avoid deadlocks by scheduling processing on decrypted queue
+          this.addToQueue(
+            () => this.dispatchAndWait(event),
+            TaskType.Decrypted
+          );
         } else {
           const envelopeId = this.getEnvelopeId(envelope);
           window.log.error(
@@ -1390,40 +1488,6 @@ class MessageReceiverInner extends EventTarget {
 
         throw error;
       });
-  }
-
-  isOverHourIntoPast(timestamp: number): boolean {
-    const HOUR = 1000 * 60 * 60;
-    const now = Date.now();
-    const oneHourIntoPast = now - HOUR;
-
-    return isNumber(timestamp) && timestamp <= oneHourIntoPast;
-  }
-
-  // We don't lose anything if we delete keys over an hour into the past, because we only
-  //   change our behavior if the timestamps stored are less than an hour ago.
-  cleanupSessionResets(): void {
-    const sessionResets = window.storage.get(
-      'sessionResets',
-      {}
-    ) as SessionResetsType;
-
-    const keys = Object.keys(sessionResets);
-    keys.forEach(key => {
-      const timestamp = sessionResets[key];
-      if (!timestamp || this.isOverHourIntoPast(timestamp)) {
-        delete sessionResets[key];
-      }
-    });
-
-    window.storage.put('sessionResets', sessionResets);
-  }
-
-  async lightSessionReset(uuid: string, deviceId: number): Promise<void> {
-    const event = new Event('light-session-reset');
-    event.senderUuid = uuid;
-    event.senderDevice = deviceId;
-    await this.dispatchAndWait(event);
   }
 
   async handleSentMessage(
@@ -1594,6 +1658,7 @@ class MessageReceiverInner extends EventTarget {
           sourceUuid: envelope.sourceUuid,
           sourceDevice: envelope.sourceDevice,
           timestamp: envelope.timestamp.toNumber(),
+          serverGuid: envelope.serverGuid,
           serverTimestamp: envelope.serverTimestamp,
           unidentifiedDeliveryReceived: envelope.unidentifiedDeliveryReceived,
           message,
@@ -1661,7 +1726,10 @@ class MessageReceiverInner extends EventTarget {
     //   make sure to process it first. If that fails, we still try to process
     //   the rest of the message.
     try {
-      if (content.senderKeyDistributionMessage) {
+      if (
+        content.senderKeyDistributionMessage &&
+        !isByteBufferEmpty(content.senderKeyDistributionMessage)
+      ) {
         await this.handleSenderKeyDistributionMessage(
           envelope,
           content.senderKeyDistributionMessage
@@ -1674,6 +1742,16 @@ class MessageReceiverInner extends EventTarget {
       );
     }
 
+    if (
+      content.decryptionErrorMessage &&
+      !isByteBufferEmpty(content.decryptionErrorMessage)
+    ) {
+      await this.handleDecryptionError(
+        envelope,
+        content.decryptionErrorMessage
+      );
+      return;
+    }
     if (content.syncMessage) {
       await this.handleSyncMessage(envelope, content.syncMessage);
       return;
@@ -1706,12 +1784,43 @@ class MessageReceiverInner extends EventTarget {
     }
   }
 
+  async handleDecryptionError(
+    envelope: EnvelopeClass,
+    decryptionError: ByteBufferClass
+  ) {
+    const logId = this.getEnvelopeId(envelope);
+    window.log.info(`handleDecryptionError: ${logId}`);
+
+    const buffer = Buffer.from(decryptionError.toArrayBuffer());
+    const request = DecryptionErrorMessage.deserialize(buffer);
+
+    this.removeFromCache(envelope);
+
+    const { sourceUuid, sourceDevice } = envelope;
+    if (!sourceUuid || !sourceDevice) {
+      window.log.error(
+        `handleDecryptionError/${logId}: Missing uuid or device!`
+      );
+      return;
+    }
+
+    const event = new Event('retry-request');
+    event.retryRequest = {
+      groupId: envelope.groupId,
+      requesterDevice: sourceDevice,
+      requesterUuid: sourceUuid,
+      senderDevice: request.deviceId(),
+      sentAt: request.timestamp(),
+    };
+    await this.dispatchAndWait(event);
+  }
+
   async handleSenderKeyDistributionMessage(
     envelope: EnvelopeClass,
     distributionMessage: ByteBufferClass
   ): Promise<void> {
     const envelopeId = this.getEnvelopeId(envelope);
-    window.log.info(`handleSenderKeyDistributionMessage: ${envelopeId}`);
+    window.log.info(`handleSenderKeyDistributionMessage/${envelopeId}`);
 
     // Note: we don't call removeFromCache here because this message can be combined
     //   with a dataMessage, for example. That processing will dictate cache removal.
@@ -1900,10 +2009,9 @@ class MessageReceiverInner extends EventTarget {
       );
     }
     const masterKey = await deriveMasterKeyFromGroupV1(groupId);
-    const data = deriveGroupFields(masterKey);
+    const data = deriveGroupFields(new FIXMEU8(masterKey));
 
-    const toBase64 = MessageReceiverInner.arrayBufferToStringBase64;
-    return toBase64(data.id);
+    return Bytes.toBase64(data.id);
   }
 
   async deriveGroupV1Data(message: DataMessageClass) {
@@ -1949,11 +2057,11 @@ class MessageReceiverInner extends EventTarget {
       );
     }
 
-    const fields = deriveGroupFields(masterKey);
+    const fields = deriveGroupFields(new FIXMEU8(masterKey));
     groupV2.masterKey = toBase64(masterKey);
-    groupV2.secretParams = toBase64(fields.secretParams);
-    groupV2.publicParams = toBase64(fields.publicParams);
-    groupV2.id = toBase64(fields.id);
+    groupV2.secretParams = Bytes.toBase64(fields.secretParams);
+    groupV2.publicParams = Bytes.toBase64(fields.publicParams);
+    groupV2.id = Bytes.toBase64(fields.id);
 
     if (groupV2.groupChange) {
       groupV2.groupChange = groupV2.groupChange.toString('base64');
@@ -2326,7 +2434,9 @@ class MessageReceiverInner extends EventTarget {
     blocked: SyncMessageClass.Blocked
   ) {
     window.log.info('Setting these numbers as blocked:', blocked.numbers);
-    await window.textsecure.storage.put('blocked', blocked.numbers);
+    if (blocked.numbers) {
+      await window.textsecure.storage.put('blocked', blocked.numbers);
+    }
     if (blocked.uuids) {
       window.normalizeUuids(
         blocked,
@@ -2348,17 +2458,15 @@ class MessageReceiverInner extends EventTarget {
   }
 
   isBlocked(number: string) {
-    return window.textsecure.storage.get('blocked', []).includes(number);
+    return window.textsecure.storage.blocked.isBlocked(number);
   }
 
   isUuidBlocked(uuid: string) {
-    return window.textsecure.storage.get('blocked-uuids', []).includes(uuid);
+    return window.textsecure.storage.blocked.isUuidBlocked(uuid);
   }
 
   isGroupBlocked(groupId: string) {
-    return window.textsecure.storage
-      .get('blocked-groups', [])
-      .includes(groupId);
+    return window.textsecure.storage.blocked.isGroupBlocked(groupId);
   }
 
   cleanAttachment(attachment: AttachmentPointerClass) {
@@ -2398,10 +2506,14 @@ class MessageReceiverInner extends EventTarget {
   async downloadAttachment(
     attachment: AttachmentPointerClass
   ): Promise<DownloadAttachmentType> {
-    const encrypted = await this.server.getAttachment(
-      attachment.cdnId || attachment.cdnKey,
-      attachment.cdnNumber || 0
-    );
+    const cdnId = attachment.cdnId || attachment.cdnKey;
+    const { cdnNumber } = attachment;
+
+    if (!cdnId) {
+      throw new Error('downloadAttachment: Attachment was missing cdnId!');
+    }
+
+    const encrypted = await this.server.getAttachment(cdnId, cdnNumber);
     const { key, digest, size } = attachment;
 
     if (!digest) {
@@ -2632,11 +2744,8 @@ export default class MessageReceiver {
     this.hasEmptied = inner.hasEmptied.bind(inner);
     this.removeEventListener = inner.removeEventListener.bind(inner);
     this.stopProcessing = inner.stopProcessing.bind(inner);
+    this.checkSocket = inner.checkSocket.bind(inner);
     this.unregisterBatchers = inner.unregisterBatchers.bind(inner);
-
-    // For tests
-    this.isOverHourIntoPast = inner.isOverHourIntoPast.bind(inner);
-    this.cleanupSessionResets = inner.cleanupSessionResets.bind(inner);
 
     inner.connect();
     this.getProcessedCount = () => inner.processedCount;
@@ -2650,7 +2759,7 @@ export default class MessageReceiver {
     attachment: AttachmentPointerClass
   ) => Promise<DownloadAttachmentType>;
 
-  getStatus: () => number;
+  getStatus: () => SocketStatus;
 
   hasEmptied: () => boolean;
 
@@ -2660,9 +2769,7 @@ export default class MessageReceiver {
 
   unregisterBatchers: () => void;
 
-  isOverHourIntoPast: (timestamp: number) => boolean;
-
-  cleanupSessionResets: () => void;
+  checkSocket: () => void;
 
   getProcessedCount: () => number;
 

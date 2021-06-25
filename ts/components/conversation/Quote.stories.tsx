@@ -8,7 +8,7 @@ import { action } from '@storybook/addon-actions';
 import { boolean, text } from '@storybook/addon-knobs';
 import { storiesOf } from '@storybook/react';
 
-import { Colors } from '../../types/Colors';
+import { ConversationColors } from '../../types/Colors';
 import { pngUrl } from '../../storybook/Fixtures';
 import { Message, Props as MessagesProps } from './Message';
 import {
@@ -35,66 +35,78 @@ const defaultMessageProps: MessagesProps = {
   canReply: true,
   canDeleteForEveryone: true,
   canDownload: true,
-  clearSelectedMessage: () => null,
+  checkForAccount: action('checkForAccount'),
+  clearSelectedMessage: action('default--clearSelectedMessage'),
+  conversationColor: 'crimson',
   conversationId: 'conversationId',
   conversationType: 'direct', // override
-  deleteMessage: () => null,
-  deleteMessageForEveryone: () => null,
+  deleteMessage: action('default--deleteMessage'),
+  deleteMessageForEveryone: action('default--deleteMessageForEveryone'),
   direction: 'incoming',
-  displayTapToViewMessage: () => null,
-  downloadAttachment: () => null,
+  displayTapToViewMessage: action('default--displayTapToViewMessage'),
+  downloadAttachment: action('default--downloadAttachment'),
+  doubleCheckMissingQuoteReference: action(
+    'default--doubleCheckMissingQuoteReference'
+  ),
   i18n,
   id: 'messageId',
   interactionMode: 'keyboard',
   isBlocked: false,
   isMessageRequestAccepted: true,
-  kickOffAttachmentDownload: () => null,
-  markAttachmentAsCorrupted: () => null,
-  openConversation: () => null,
-  openLink: () => null,
+  kickOffAttachmentDownload: action('default--kickOffAttachmentDownload'),
+  markAttachmentAsCorrupted: action('default--markAttachmentAsCorrupted'),
+  onHeightChange: action('onHeightChange'),
+  openConversation: action('default--openConversation'),
+  openLink: action('default--openLink'),
   previews: [],
-  reactToMessage: () => null,
+  reactToMessage: action('default--reactToMessage'),
   renderEmojiPicker: () => <div />,
   renderAudioAttachment: () => <div>*AudioAttachment*</div>,
-  replyToMessage: () => null,
-  retrySend: () => null,
-  scrollToQuotedMessage: () => null,
-  selectMessage: () => null,
-  showContactDetail: () => null,
-  showContactModal: () => null,
-  showExpiredIncomingTapToViewToast: () => null,
-  showExpiredOutgoingTapToViewToast: () => null,
-  showForwardMessageModal: () => null,
-  showMessageDetail: () => null,
-  showVisualAttachment: () => null,
+  replyToMessage: action('default--replyToMessage'),
+  retrySend: action('default--retrySend'),
+  scrollToQuotedMessage: action('default--scrollToQuotedMessage'),
+  selectMessage: action('default--selectMessage'),
+  showContactDetail: action('default--showContactDetail'),
+  showContactModal: action('default--showContactModal'),
+  showExpiredIncomingTapToViewToast: action(
+    'showExpiredIncomingTapToViewToast'
+  ),
+  showExpiredOutgoingTapToViewToast: action(
+    'showExpiredOutgoingTapToViewToast'
+  ),
+  showForwardMessageModal: action('default--showForwardMessageModal'),
+  showMessageDetail: action('default--showMessageDetail'),
+  showVisualAttachment: action('default--showVisualAttachment'),
   status: 'sent',
   text: 'This is really interesting.',
   timestamp: Date.now(),
 };
 
 const renderInMessage = ({
-  authorColor,
   authorName,
   authorPhoneNumber,
   authorProfileName,
   authorTitle,
+  conversationColor,
   isFromMe,
   rawAttachment,
+  isViewOnce,
   referencedMessageNotFound,
   text: quoteText,
 }: Props) => {
   const messageProps = {
     ...defaultMessageProps,
-    authorColor,
+    conversationColor,
     quote: {
       authorId: 'an-author',
-      authorColor,
       authorName,
       authorPhoneNumber,
       authorProfileName,
       authorTitle,
+      conversationColor,
       isFromMe,
       rawAttachment,
+      isViewOnce,
       referencedMessageNotFound,
       sentAt: Date.now() - 30 * 1000,
       text: quoteText,
@@ -111,7 +123,6 @@ const renderInMessage = ({
 };
 
 const createProps = (overrideProps: Partial<Props> = {}): Props => ({
-  authorColor: overrideProps.authorColor || 'green',
   authorName: text('authorName', overrideProps.authorName || ''),
   authorPhoneNumber: text(
     'authorPhoneNumber',
@@ -122,6 +133,10 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
     overrideProps.authorProfileName || ''
   ),
   authorTitle: text('authorTitle', overrideProps.authorTitle || ''),
+  conversationColor: overrideProps.conversationColor || 'forest',
+  doubleCheckMissingQuoteReference:
+    overrideProps.doubleCheckMissingQuoteReference ||
+    action('doubleCheckMissingQuoteReference'),
   i18n,
   isFromMe: boolean('isFromMe', overrideProps.isFromMe || false),
   isIncoming: boolean('isIncoming', overrideProps.isIncoming || false),
@@ -132,6 +147,7 @@ const createProps = (overrideProps: Partial<Props> = {}): Props => ({
     'referencedMessageNotFound',
     overrideProps.referencedMessageNotFound || false
   ),
+  isViewOnce: boolean('isViewOnce', overrideProps.isViewOnce || false),
   text: text(
     'text',
     isString(overrideProps.text)
@@ -182,7 +198,9 @@ story.add('Incoming/Outgoing Colors', () => {
   const props = createProps({});
   return (
     <>
-      {Colors.map(color => renderInMessage({ ...props, authorColor: color }))}
+      {ConversationColors.map(color =>
+        renderInMessage({ ...props, conversationColor: color })
+      )}
     </>
   );
 });
@@ -244,6 +262,20 @@ story.add('Image Attachment w/o Thumbnail', () => {
   return <Quote {...props} />;
 });
 
+story.add('Image Tap-to-View', () => {
+  const props = createProps({
+    text: '',
+    isViewOnce: true,
+    rawAttachment: {
+      contentType: IMAGE_PNG,
+      fileName: 'sax.png',
+      isVoiceMessage: false,
+    },
+  });
+
+  return <Quote {...props} />;
+});
+
 story.add('Video Only', () => {
   const props = createProps({
     rawAttachment: {
@@ -280,6 +312,20 @@ story.add('Video Attachment', () => {
 
 story.add('Video Attachment w/o Thumbnail', () => {
   const props = createProps({
+    rawAttachment: {
+      contentType: VIDEO_MP4,
+      fileName: 'great-video.mp4',
+      isVoiceMessage: false,
+    },
+  });
+
+  return <Quote {...props} />;
+});
+
+story.add('Video Tap-to-View', () => {
+  const props = createProps({
+    text: '',
+    isViewOnce: true,
     rawAttachment: {
       contentType: VIDEO_MP4,
       fileName: 'great-video.mp4',
@@ -352,6 +398,20 @@ story.add('Other File Only', () => {
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   props.text = undefined as any;
+
+  return <Quote {...props} />;
+});
+
+story.add('Media Tap-to-View', () => {
+  const props = createProps({
+    text: '',
+    isViewOnce: true,
+    rawAttachment: {
+      contentType: AUDIO_MP3,
+      fileName: 'great-video.mp3',
+      isVoiceMessage: false,
+    },
+  });
 
   return <Quote {...props} />;
 });
@@ -440,3 +500,22 @@ story.add('@mention + incoming + me', () => {
 
   return <Quote {...props} />;
 });
+
+story.add('Custom Color', () => (
+  <>
+    <Quote
+      {...createProps({ isIncoming: true, text: 'Solid + Gradient' })}
+      customColor={{
+        start: { hue: 82, saturation: 35 },
+      }}
+    />
+    <Quote
+      {...createProps()}
+      customColor={{
+        deg: 192,
+        start: { hue: 304, saturation: 85 },
+        end: { hue: 231, saturation: 76 },
+      }}
+    />
+  </>
+));

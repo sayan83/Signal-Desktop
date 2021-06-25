@@ -6,12 +6,8 @@ import * as Backbone from 'backbone';
 import { GroupV2ChangeType } from './groups';
 import { LocalizerType, BodyRangeType, BodyRangesType } from './types/Util';
 import { CallHistoryDetailsFromDiskType } from './types/Calling';
-import { ColorType } from './types/Colors';
-import {
-  ConversationType,
-  MessageType,
-  LastMessageStatus,
-} from './state/ducks/conversations';
+import { CustomColorType } from './types/Colors';
+import { DeviceType } from './textsecure/Types';
 import { SendOptionsType } from './textsecure/SendMessage';
 import { SendMessageChallengeData } from './textsecure/Errors';
 import {
@@ -24,19 +20,21 @@ import { MessageModel } from './models/messages';
 import { ConversationModel } from './models/conversations';
 import { ProfileNameChangeType } from './util/getStringForProfileChange';
 import { CapabilitiesType } from './textsecure/WebAPI';
+import { GroupNameCollisionsWithIdsByTitle } from './util/groupMemberNameCollisions';
+import { ConversationColorType } from './types/Colors';
+import { AttachmentType, ThumbnailType } from './types/Attachment';
+import { ContactType } from './types/Contact';
 
 export type WhatIsThis = any;
 
-type DeletesAttributesType = {
-  fromId: string;
-  serverTimestamp: number;
-  targetSentTimestamp: number;
-};
-
-export declare class DeletesModelType extends Backbone.Model<DeletesAttributesType> {
-  forMessage(message: MessageModel): Array<DeletesModelType>;
-  onDelete(doe: DeletesAttributesType): Promise<void>;
-}
+export type LastMessageStatus =
+  | 'paused'
+  | 'error'
+  | 'partial-sent'
+  | 'sending'
+  | 'sent'
+  | 'delivered'
+  | 'read';
 
 type TaskResultType = any;
 
@@ -62,6 +60,7 @@ export type QuotedMessageType = {
   bodyRanges: BodyRangesType;
   id: string;
   referencedMessageNotFound: boolean;
+  isViewOnce: boolean;
   text: string;
 };
 
@@ -72,40 +71,41 @@ export type RetryOptions = Readonly<{
   now: number;
 }>;
 
+export type GroupV1Update = {
+  avatarUpdated?: boolean;
+  joined?: Array<string>;
+  left?: string | 'You';
+  name?: string;
+};
+
 export type MessageAttributesType = {
-  bodyPending: boolean;
-  bodyRanges: BodyRangesType;
-  callHistoryDetails: CallHistoryDetailsFromDiskType;
-  changedId: string;
-  dataMessage: ArrayBuffer | null;
-  decrypted_at: number;
-  deletedForEveryone: boolean;
+  bodyPending?: boolean;
+  bodyRanges?: BodyRangesType;
+  callHistoryDetails?: CallHistoryDetailsFromDiskType;
+  changedId?: string;
+  dataMessage?: ArrayBuffer | null;
+  decrypted_at?: number;
+  deletedForEveryone?: boolean;
   deletedForEveryoneTimestamp?: number;
-  delivered: number;
-  delivered_to: Array<string | null>;
+  delivered?: number;
+  delivered_to?: Array<string | null>;
   errors?: Array<CustomError>;
-  expirationStartTimestamp: number | null;
-  expireTimer: number;
-  expires_at: number;
+  expirationStartTimestamp?: number | null;
+  expireTimer?: number;
   groupMigration?: GroupMigrationType;
-  group_update: {
-    avatarUpdated: boolean;
-    joined: Array<string>;
-    left: string | 'You';
-    name: string;
-  };
-  hasAttachments: boolean;
-  hasFileAttachments: boolean;
-  hasVisualMediaAttachments: boolean;
-  isErased: boolean;
-  isTapToViewInvalid: boolean;
-  isViewOnce: boolean;
-  key_changed: string;
-  local: boolean;
-  logger: unknown;
-  message: unknown;
-  messageTimer: unknown;
-  profileChange: ProfileNameChangeType;
+  group_update?: GroupV1Update;
+  hasAttachments?: boolean;
+  hasFileAttachments?: boolean;
+  hasVisualMediaAttachments?: boolean;
+  isErased?: boolean;
+  isTapToViewInvalid?: boolean;
+  isViewOnce?: boolean;
+  key_changed?: string;
+  local?: boolean;
+  logger?: unknown;
+  message?: unknown;
+  messageTimer?: unknown;
+  profileChange?: ProfileNameChangeType;
   quote?: QuotedMessageType;
   reactions?: Array<{
     emoji: string;
@@ -114,43 +114,49 @@ export type MessageAttributesType = {
     targetTimestamp: number;
     timestamp: number;
   }>;
-  read_by: Array<string | null>;
-  requiredProtocolVersion: number;
+  read_by?: Array<string | null>;
+  requiredProtocolVersion?: number;
   retryOptions?: RetryOptions;
-  sent: boolean;
-  sourceDevice: string | number;
-  snippet: unknown;
-  supportedVersionAtReceive: unknown;
-  synced: boolean;
-  unidentifiedDeliveryReceived: boolean;
-  verified: boolean;
-  verifiedChanged: string;
+  sent?: boolean;
+  sourceDevice?: string | number;
+  supportedVersionAtReceive?: unknown;
+  synced?: boolean;
+  unidentifiedDeliveryReceived?: boolean;
+  verified?: boolean;
+  verifiedChanged?: string;
 
   id: string;
-  type?:
-    | 'incoming'
-    | 'outgoing'
-    | 'group'
-    | 'keychange'
-    | 'verified-change'
-    | 'message-history-unsynced'
+  type:
     | 'call-history'
     | 'chat-session-refreshed'
+    | 'delivery-issue'
+    | 'group'
     | 'group-v1-migration'
     | 'group-v2-change'
+    | 'incoming'
+    | 'keychange'
+    | 'message-history-unsynced'
+    | 'outgoing'
     | 'profile-change'
-    | 'timer-notification';
-  body: string;
-  attachments: Array<WhatIsThis>;
-  preview: Array<WhatIsThis>;
-  sticker: WhatIsThis;
+    | 'timer-notification'
+    | 'universal-timer-notification'
+    | 'verified-change';
+  body?: string;
+  attachments?: Array<AttachmentType>;
+  preview?: Array<WhatIsThis>;
+  sticker?: {
+    packId: string;
+    stickerId: number;
+    packKey: string;
+    data?: AttachmentType;
+  };
   sent_at: number;
-  sent_to: Array<string>;
-  unidentifiedDeliveries: Array<string>;
-  contact: Array<WhatIsThis>;
+  sent_to?: Array<string>;
+  unidentifiedDeliveries?: Array<string>;
+  contact?: Array<ContactType>;
   conversationId: string;
-  recipients: Array<string>;
-  reaction: WhatIsThis;
+  recipients?: Array<string>;
+  reaction?: WhatIsThis;
   destination?: WhatIsThis;
   destinationUuid?: string;
 
@@ -169,12 +175,15 @@ export type MessageAttributesType = {
   // More of a legacy feature, needed as we were updating the schema of messages in the
   //   background, when we were still in IndexedDB, before attachments had gone to disk
   // We set this so that the idle message upgrade process doesn't pick this message up
-  schemaVersion: number;
+  schemaVersion?: number;
+  // This should always be set for new messages, but older messages may not have them. We
+  //   may not have these for outbound messages, either, as we have not needed them.
+  serverGuid?: string;
   serverTimestamp?: number;
   source?: string;
   sourceUuid?: string;
 
-  unread: boolean;
+  unread?: boolean;
   timestamp: number;
 
   // Backwards-compatibility with prerelease data schema
@@ -189,6 +198,9 @@ export type ConversationAttributesType = {
   addedBy?: string;
   capabilities?: CapabilitiesType;
   color?: string;
+  conversationColor?: ConversationColorType;
+  customColor?: CustomColorType;
+  customColorId?: string;
   discoveredUnregisteredAt?: number;
   draftAttachments?: Array<{
     path?: string;
@@ -246,6 +258,7 @@ export type ConversationAttributesType = {
   profileName?: string;
   verified?: number;
   profileLastFetchedAt?: number;
+  pendingUniversalTimer?: string;
 
   // Group-only
   groupId?: string;
@@ -264,6 +277,11 @@ export type ConversationAttributesType = {
   secretParams?: string;
   publicParams?: string;
   revision?: number;
+  senderKeyInfo?: {
+    createdAtDate: number;
+    distributionId: string;
+    memberDevices: Array<DeviceType>;
+  };
 
   // GroupV2 other fields
   accessControl?: {
@@ -276,6 +294,7 @@ export type ConversationAttributesType = {
     path: string;
     hash?: string;
   } | null;
+  description?: string;
   expireTimer?: number;
   membersV2?: Array<GroupV2MemberType>;
   pendingMembersV2?: Array<GroupV2PendingMemberType>;
@@ -283,6 +302,7 @@ export type ConversationAttributesType = {
   groupInviteLinkPassword?: string;
   previousGroupV1Id?: string;
   previousGroupV1Members?: Array<string>;
+  acknowledgedGroupNameCollisions?: GroupNameCollisionsWithIdsByTitle;
 
   // Used only when user is waiting for approval to join via link
   isTemporary?: boolean;

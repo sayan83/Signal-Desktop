@@ -15,12 +15,17 @@
     text-overflow: ellipsis;
     user-select: none;
     white-space: nowrap;
-    width: 212px;
+    width: 350px;
+  }
+
+  &__button {
+    white-space: nowrap;
   }
 
   &__buttons {
     align-items: center;
     display: flex;
+    margin-left: 6px;
     -webkit-app-region: no-drag;
   }
 

@@ -77,8 +77,9 @@ export const CallingSelectPresentingSourcesModal = ({
     throw new Error('No sources available for presenting');
   }
 
-  const sources = groupBy(presentingSourcesAvailable, source =>
-    source.id.startsWith('screen')
+  const sources = groupBy(
+    presentingSourcesAvailable,
+    source => source.isScreen
   );
 
   return (
@@ -87,7 +88,7 @@ export const CallingSelectPresentingSourcesModal = ({
       i18n={i18n}
       moduleClassName="module-CallingSelectPresentingSourcesModal"
       onClose={() => {
-        setPresenting(sourceToPresent);
+        setPresenting();
       }}
       theme={Theme.Dark}
       title={i18n('calling__SelectPresentingSourcesModal--title')}
@@ -118,7 +119,7 @@ export const CallingSelectPresentingSourcesModal = ({
           />
         ))}
       </div>
-      <Modal.Footer moduleClassName="module-CallingSelectPresentingSourcesModal">
+      <Modal.ButtonFooter moduleClassName="module-CallingSelectPresentingSourcesModal">
         <Button
           onClick={() => setPresenting()}
           variant={ButtonVariant.Secondary}
@@ -131,7 +132,7 @@ export const CallingSelectPresentingSourcesModal = ({
         >
           {i18n('calling__SelectPresentingSourcesModal--confirm')}
         </Button>
-      </Modal.Footer>
+      </Modal.ButtonFooter>
     </Modal>
   );
 };

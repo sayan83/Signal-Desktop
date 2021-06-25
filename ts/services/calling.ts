@@ -48,12 +48,15 @@ import {
   PresentableSource,
   PresentedSource,
 } from '../types/Calling';
+import { LocalizerType } from '../types/Util';
 import { ConversationModel } from '../models/conversations';
 import {
   base64ToArrayBuffer,
   uuidToArrayBuffer,
   arrayBufferToUuid,
+  typedArrayToArrayBuffer,
 } from '../Crypto';
+import { assert } from '../util/assert';
 import { getOwn } from '../util/getOwn';
 import {
   fetchMembershipProof,
@@ -68,6 +71,7 @@ import {
   REQUESTED_VIDEO_FRAMERATE,
 } from '../calling/constants';
 import { notify } from './notify';
+import { getSendOptions } from '../util/getSendOptions';
 
 const RINGRTC_HTTP_METHOD_TO_OUR_HTTP_METHOD: Map<
   HttpMethod,
@@ -87,6 +91,33 @@ enum GroupCallUpdateMessageState {
   SentNothing,
   SentJoin,
   SentLeft,
+}
+
+function isScreenSource(source: PresentedSource): boolean {
+  return source.id.startsWith('screen');
+}
+
+function translateSourceName(
+  i18n: LocalizerType,
+  source: PresentedSource
+): string {
+  const { name } = source;
+  if (!isScreenSource(source)) {
+    return name;
+  }
+
+  if (name === 'Entire Screen') {
+    return i18n('calling__SelectPresentingSourcesModal--entireScreen');
+  }
+
+  const match = name.match(/^Screen (\d+)$/);
+  if (match) {
+    return i18n('calling__SelectPresentingSourcesModal--screen', {
+      id: match[1],
+    });
+  }
+
+  return name;
 }
 
 export class CallingClass {
@@ -354,7 +385,7 @@ export class CallingClass {
       member =>
         new GroupMemberInfo(
           uuidToArrayBuffer(member.uuid),
-          member.uuidCiphertext
+          typedArrayToArrayBuffer(member.uuidCiphertext)
         )
     );
   }
@@ -755,7 +786,7 @@ export class CallingClass {
     }
 
     const groupV2 = conversation.getGroupV2Info();
-    const sendOptions = await conversation.getSendOptions();
+    const sendOptions = await getSendOptions(conversation.attributes);
     if (!groupV2) {
       window.log.error(
         'Unable to send group call update message for conversation that lacks groupV2 info'
@@ -766,14 +797,25 @@ export class CallingClass {
     const timestamp = Date.now();
 
     // We "fire and forget" because sending this message is non-essential.
+    const {
+      ContentHint,
+    } = window.textsecure.protobuf.UnidentifiedSenderMessage.Message;
     wrapWithSyncMessageSend({
       conversation,
-      logId: `sendGroupCallUpdateMessage/${conversationId}-${eraId}`,
-      send: sender =>
-        sender.sendGroupCallUpdate({ eraId, groupV2, timestamp }, sendOptions),
+      logId: `sendToGroup/groupCallUpdate/${conversationId}-${eraId}`,
+      send: () =>
+        window.Signal.Util.sendToGroup(
+          { groupCallUpdate: { eraId }, groupV2, timestamp },
+          conversation,
+          ContentHint.DEFAULT,
+          sendOptions
+        ),
       timestamp,
     }).catch(err => {
-      window.log.error('Failed to send group call update', err);
+      window.log.error(
+        'Failed to send group call update:',
+        err && err.stack ? err.stack : err
+      );
     });
   }
 
@@ -901,7 +943,8 @@ export class CallingClass {
             ? source.appIcon.toDataURL()
             : undefined,
         id: source.id,
-        name: source.name,
+        name: translateSourceName(window.i18n, source),
+        isScreen: isScreenSource(source),
         thumbnail: source.thumbnail.toDataURL(),
       });
     });
@@ -934,7 +977,7 @@ export class CallingClass {
     } else {
       this.setOutgoingVideo(
         conversationId,
-        Boolean(this.hadLocalVideoBeforePresenting) || hasLocalVideo
+        this.hadLocalVideoBeforePresenting ?? hasLocalVideo
       );
       this.hadLocalVideoBeforePresenting = undefined;
     }
@@ -1216,9 +1259,13 @@ export class CallingClass {
     }
     const senderIdentityKey = senderIdentityRecord.publicKey.slice(1); // Ignore the type header, it is not used.
 
-    const receiverIdentityRecord = window.textsecure.storage.protocol.getIdentityRecord(
+    const ourIdentifier =
       window.textsecure.storage.user.getUuid() ||
-        window.textsecure.storage.user.getNumber()
+      window.textsecure.storage.user.getNumber();
+    assert(ourIdentifier, 'We should have either uuid or number');
+
+    const receiverIdentityRecord = window.textsecure.storage.protocol.getIdentityRecord(
+      ourIdentifier
     );
     if (!receiverIdentityRecord) {
       window.log.error(
@@ -1251,7 +1298,8 @@ export class CallingClass {
 
       this.addCallHistoryForFailedIncomingCall(
         conversation,
-        callingMessage.offer.type === OfferType.VideoCall
+        callingMessage.offer.type === OfferType.VideoCall,
+        envelope.timestamp
       );
 
       return;
@@ -1367,7 +1415,7 @@ export class CallingClass {
   ): Promise<boolean> {
     const conversation = window.ConversationController.get(remoteUserId);
     const sendOptions = conversation
-      ? await conversation.getSendOptions()
+      ? await getSendOptions(conversation.attributes)
       : undefined;
 
     if (!window.textsecure.messaging) {
@@ -1425,7 +1473,8 @@ export class CallingClass {
         );
         this.addCallHistoryForFailedIncomingCall(
           conversation,
-          call.isVideoCall
+          call.isVideoCall,
+          Date.now()
         );
         return null;
       }
@@ -1442,7 +1491,11 @@ export class CallingClass {
       return await this.getCallSettings(conversation);
     } catch (err) {
       window.log.error(`Ignoring incoming call: ${err.stack}`);
-      this.addCallHistoryForFailedIncomingCall(conversation, call.isVideoCall);
+      this.addCallHistoryForFailedIncomingCall(
+        conversation,
+        call.isVideoCall,
+        Date.now()
+      );
       return null;
     }
   }
@@ -1657,7 +1710,8 @@ export class CallingClass {
 
   private addCallHistoryForFailedIncomingCall(
     conversation: ConversationModel,
-    wasVideoCall: boolean
+    wasVideoCall: boolean,
+    timestamp: number
   ) {
     conversation.addCallHistory({
       callMode: CallMode.Direct,
@@ -1666,7 +1720,7 @@ export class CallingClass {
       // Since the user didn't decline, make sure it shows up as a missed call instead
       wasDeclined: false,
       acceptedTime: undefined,
-      endedTime: Date.now(),
+      endedTime: timestamp,
     });
   }
 

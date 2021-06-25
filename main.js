@@ -19,7 +19,7 @@ const electron = require('electron');
 const packageJson = require('./package.json');
 const GlobalErrors = require('./app/global_errors');
 const { setup: setupSpellChecker } = require('./app/spell_check');
-const { redactAll } = require('./js/modules/privacy');
+const { redactAll, addSensitivePath } = require('./ts/util/privacy');
 const removeUserConfig = require('./app/user_config').remove;
 
 GlobalErrors.addHandler();
@@ -71,7 +71,7 @@ const startInTray = process.argv.some(arg => arg === '--start-in-tray');
 const usingTrayIcon =
   startInTray || process.argv.some(arg => arg === '--use-tray-icon');
 
-const config = require('./app/config');
+const config = require('./app/config').default;
 
 // Very important to put before the single instance check, since it is based on the
 //   userData directory.
@@ -91,7 +91,7 @@ const attachments = require('./app/attachments');
 const attachmentChannel = require('./app/attachment_channel');
 const bounce = require('./ts/services/bounce');
 const updater = require('./ts/updater/index');
-const createTrayIcon = require('./app/tray_icon');
+const createTrayIcon = require('./app/tray_icon').default;
 const dockIcon = require('./ts/dock_icon');
 const ephemeralConfig = require('./app/ephemeral_config');
 const logging = require('./ts/logging/main_process_logging');
@@ -123,6 +123,7 @@ const {
 } = require('./ts/types/Settings');
 const { Environment } = require('./ts/environment');
 const { ChallengeMainHandler } = require('./ts/main/challengeMain');
+const { PowerChannel } = require('./ts/main/powerChannel');
 const { maybeParseUrl, setUrlSearchParams } = require('./ts/util/url');
 
 const sql = new MainSQL();
@@ -613,12 +614,6 @@ ipc.on('show-window', () => {
   showWindow();
 });
 
-ipc.on('set-secure-input', (_sender, enabled) => {
-  if (app.setSecureKeyboardEntryEnabled) {
-    app.setSecureKeyboardEntryEnabled(enabled);
-  }
-});
-
 ipc.on('title-bar-double-click', () => {
   if (!mainWindow) {
     return;
@@ -764,7 +759,7 @@ function setupAsStandalone() {
 let screenShareWindow;
 function showScreenShareWindow(sourceName) {
   if (screenShareWindow) {
-    screenShareWindow.show();
+    screenShareWindow.showInactive();
     return;
   }
 
@@ -808,7 +803,7 @@ function showScreenShareWindow(sourceName) {
   });
 
   screenShareWindow.once('ready-to-show', () => {
-    screenShareWindow.show();
+    screenShareWindow.showInactive();
     screenShareWindow.webContents.send(
       'render-screen-sharing-controller',
       sourceName
@@ -1218,6 +1213,8 @@ app.on('ready', async () => {
   const userDataPath = await getRealPath(app.getPath('userData'));
   const installPath = await getRealPath(app.getAppPath());
 
+  addSensitivePath(userDataPath);
+
   if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'test-lib') {
     installFileHandler({
       protocol: electronProtocol,
@@ -1302,6 +1299,31 @@ app.on('ready', async () => {
     loadingWindow.loadURL(prepareFileUrl([__dirname, 'loading.html']));
   });
 
+  try {
+    await attachments.clearTempPath(userDataPath);
+  } catch (err) {
+    logger.error(
+      'main/ready: Error deleting temp dir:',
+      err && err.stack ? err.stack : err
+    );
+  }
+
+  // Initialize IPC channels before creating the window
+
+  attachmentChannel.initialize({
+    configDir: userDataPath,
+    cleanupOrphanedAttachments,
+  });
+  sqlChannels.initialize(sql);
+  PowerChannel.initialize({
+    send(event) {
+      if (!mainWindow) {
+        return;
+      }
+      mainWindow.webContents.send(event);
+    },
+  });
+
   // Run window preloading in parallel with database initialization.
   await createWindow();
 
@@ -1337,7 +1359,6 @@ app.on('ready', async () => {
 
   // eslint-disable-next-line more/no-then
   appStartInitialSpellcheckSetting = await getSpellCheckSetting();
-  await sqlChannels.initialize(sql);
 
   try {
     const IDB_KEY = 'indexeddb-delete-needed';
@@ -1381,22 +1402,9 @@ app.on('ready', async () => {
     );
     await attachments.deleteAllDraftAttachments({
       userDataPath,
-      stickers: orphanedDraftAttachments,
+      attachments: orphanedDraftAttachments,
     });
   }
-
-  try {
-    await attachments.clearTempPath(userDataPath);
-  } catch (err) {
-    logger.error(
-      'main/ready: Error deleting temp dir:',
-      err && err.stack ? err.stack : err
-    );
-  }
-  await attachmentChannel.initialize({
-    configDir: userDataPath,
-    cleanupOrphanedAttachments,
-  });
 
   ready = true;
 
@@ -1747,6 +1755,8 @@ installSettingsGetter('is-primary');
 installSettingsGetter('sync-request');
 installSettingsGetter('sync-time');
 installSettingsSetter('sync-time');
+installSettingsGetter('universal-expire-timer');
+installSettingsSetter('universal-expire-timer');
 
 ipc.on('delete-all-data', () => {
   if (mainWindow && mainWindow.webContents) {

@@ -9,7 +9,7 @@
     padding-bottom: 48px;
   }
 
-  &__footer {
+  &__button-footer {
     background-color: $color-gray-95;
     bottom: 0;
     margin-left: -16px;
@@ -47,8 +47,8 @@
     width: 200px;
 
     &--selected {
-      background-color: $ultramarine-ui-dark;
-      border: 1px solid $ultramarine-ui-dark;
+      background-color: $color-ultramarine-dark;
+      border: 1px solid $color-ultramarine-dark;
     }
 
     img {

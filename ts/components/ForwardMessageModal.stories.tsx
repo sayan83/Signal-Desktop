@@ -53,7 +53,6 @@ const createProps = (overrideProps: Partial<PropsType> = {}): PropsType => ({
   onSetSkinTone: action('onSetSkinTone'),
   recentEmojis: [],
   removeLinkPreview: action('removeLinkPreview'),
-  setSecureInput: action('setSecureInput'),
   skinTone: 0,
 });
 
@@ -110,6 +109,7 @@ story.add('media attachments', () => {
               width: 112,
               url: '/fixtures/kitten-4-112-112.jpg',
               contentType: IMAGE_JPEG,
+              path: 'originalPath',
             },
           }),
         ],

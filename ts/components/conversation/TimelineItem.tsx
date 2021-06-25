@@ -4,9 +4,9 @@
 import React from 'react';
 import { LocalizerType, ThemeType } from '../../types/Util';
 
+import { InteractionModeType } from '../../state/ducks/conversations';
 import {
   Message,
-  InteractionModeType,
   Props as AllMessageProps,
   PropsActions as MessageActionsType,
   PropsData as MessageProps,
@@ -19,6 +19,10 @@ import {
   ChatSessionRefreshedNotification,
   PropsActionsType as PropsChatSessionRefreshedActionsType,
 } from './ChatSessionRefreshedNotification';
+import {
+  DeliveryIssueNotification,
+  PropsDataType as DeliveryIssueProps,
+} from './DeliveryIssueNotification';
 import { CallingNotificationType } from '../../util/callingNotification';
 import { InlineNotificationWrapper } from './InlineNotificationWrapper';
 import {
@@ -66,6 +70,10 @@ type ChatSessionRefreshedType = {
   type: 'chatSessionRefreshed';
   data: null;
 };
+type DeliveryIssueType = {
+  type: 'deliveryIssue';
+  data: DeliveryIssueProps;
+};
 type LinkNotificationType = {
   type: 'linkNotification';
   data: null;
@@ -81,6 +89,10 @@ type UnsupportedMessageType = {
 type TimerNotificationType = {
   type: 'timerNotification';
   data: TimerNotificationProps;
+};
+type UniversalTimerNotificationType = {
+  type: 'universalTimerNotification';
+  data: null;
 };
 type SafetyNumberNotificationType = {
   type: 'safetyNumberNotification';
@@ -114,6 +126,7 @@ type ProfileChangeNotificationType = {
 export type TimelineItemType =
   | CallHistoryType
   | ChatSessionRefreshedType
+  | DeliveryIssueType
   | GroupNotificationType
   | GroupV1MigrationType
   | GroupV2ChangeType
@@ -123,6 +136,7 @@ export type TimelineItemType =
   | ResetSessionNotificationType
   | SafetyNumberNotificationType
   | TimerNotificationType
+  | UniversalTimerNotificationType
   | UnsupportedMessageType
   | VerificationNotificationType;
 
@@ -134,6 +148,7 @@ type PropsLocalType = {
   isSelected: boolean;
   selectMessage: (messageId: string, conversationId: string) => unknown;
   renderContact: SmartContactRendererType;
+  renderUniversalTimerNotification: () => JSX.Element;
   i18n: LocalizerType;
   interactionMode: InteractionModeType;
   theme?: ThemeType;
@@ -160,6 +175,7 @@ export class TimelineItem extends React.PureComponent<PropsType> {
       theme,
       messageSizeChanged,
       renderContact,
+      renderUniversalTimerNotification,
       returnToActiveCall,
       selectMessage,
       startCallingLobby,
@@ -203,6 +219,8 @@ export class TimelineItem extends React.PureComponent<PropsType> {
           i18n={i18n}
         />
       );
+    } else if (item.type === 'deliveryIssue') {
+      notification = <DeliveryIssueNotification {...item.data} i18n={i18n} />;
     } else if (item.type === 'linkNotification') {
       notification = (
         <div className="module-message-unsynced">
@@ -214,6 +232,8 @@ export class TimelineItem extends React.PureComponent<PropsType> {
       notification = (
         <TimerNotification {...this.props} {...item.data} i18n={i18n} />
       );
+    } else if (item.type === 'universalTimerNotification') {
+      notification = renderUniversalTimerNotification();
     } else if (item.type === 'safetyNumberNotification') {
       notification = (
         <SafetyNumberNotification {...this.props} {...item.data} i18n={i18n} />

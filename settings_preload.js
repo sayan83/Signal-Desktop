@@ -20,6 +20,10 @@ setEnvironment(parseEnvironment(config.environment));
 
 const { nativeTheme } = remote.require('electron');
 
+const { Context: SignalContext } = require('./ts/context');
+
+window.SignalContext = new SignalContext();
+
 window.platform = process.platform;
 window.theme = config.theme;
 window.i18n = i18n.setup(locale, localeMessages);
@@ -98,6 +102,8 @@ window.isPrimary = makeGetter('is-primary');
 window.makeSyncRequest = makeGetter('sync-request');
 window.getLastSyncTime = makeGetter('sync-time');
 window.setLastSyncTime = makeSetter('sync-time');
+window.getUniversalExpireTimer = makeGetter('universal-expire-timer');
+window.setUniversalExpireTimer = makeSetter('universal-expire-timer');
 
 window.deleteAllData = () => ipcRenderer.send('delete-all-data');
 
@@ -130,6 +136,9 @@ function makeSetter(name) {
 }
 
 window.Backbone = require('backbone');
+window.React = require('react');
+window.ReactDOM = require('react-dom');
+
 require('./ts/backbone/views/whisper_view');
 require('./ts/backbone/views/toast_view');
 require('./ts/logging/set_up_renderer_logging').initialize();

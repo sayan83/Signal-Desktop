@@ -45,7 +45,7 @@
   }
 
   &.module-logo-blue {
-    background-color: $ultramarine-brand-light;
+    background-color: $color-ultramarine-icon;
   }
 }
 
@@ -352,7 +352,7 @@
 }
 .module-message:focus .module-message__container {
   @include keyboard-mode {
-    box-shadow: 0 0 0 3px $ultramarine-ui-light;
+    box-shadow: 0 0 0 3px $color-ultramarine;
   }
 }
 
@@ -361,10 +361,10 @@
     box-shadow: 0 0 0 5px transparent;
   }
   10% {
-    box-shadow: 0 0 0 5px $ultramarine-ui-light;
+    box-shadow: 0 0 0 5px $color-ultramarine;
   }
   70% {
-    box-shadow: 0 0 0 5px $ultramarine-ui-light;
+    box-shadow: 0 0 0 5px $color-ultramarine;
   }
   100% {
     box-shadow: 0 0 0 5px transparent;
@@ -400,38 +400,48 @@
 
 .module-message__container--outgoing {
   @include light-theme {
-    background-color: $color-gray-05;
-  }
-  @include dark-theme {
-    background-color: $color-gray-75;
-  }
-  @include ios-theme {
-    background-color: $ultramarine-ui-light;
+    background-color: $color-ultramarine;
     color: $color-white;
   }
-  @include ios-dark-theme {
-    background-color: $ultramarine-ui-light;
+  @include dark-theme {
+    background-color: $color-ultramarine;
     color: $color-gray-05;
   }
 }
 
 // In case the color gets messed up
 .module-message__container--incoming {
-  background-color: $color-conversation-grey;
+  background-color: $color-gray-05;
+  color: $color-gray-90;
 
-  @include ios-theme {
-    background-color: $color-gray-05;
-    color: $color-gray-90;
-  }
-  @include ios-dark-theme {
+  @include dark-theme {
     background-color: $color-gray-75;
     color: $color-gray-05;
   }
 }
 
 @each $color, $value in $conversation-colors {
-  .module-message__container--incoming-#{$color} {
+  .module-message__container--outgoing-#{$color} {
     background-color: $value;
+
+    @include dark-theme {
+      background-color: $value;
+    }
+  }
+}
+
+.module-message__container--outgoing-custom {
+  background-attachment: fixed;
+}
+
+@each $color, $value in $conversation-colors-gradient {
+  .module-message__container--outgoing-#{$color} {
+    background-attachment: fixed;
+    background-image: linear-gradient(
+      map-get($value, 'deg'),
+      map-get($value, 'start'),
+      map-get($value, 'end')
+    );
   }
 }
 
@@ -441,20 +451,7 @@
 }
 
 .module-message__container--with-tap-to-view-pending {
-  @include ios-theme {
-    background-color: $color-gray-15;
-  }
-}
-
-// In case the color gets messed up
-.module-message__container--incoming--tap-to-view-pending {
-  background-color: $color-conversation-grey-shade;
-}
-
-@each $color, $value in $conversation-colors-shade {
-  .module-message__container--incoming-#{$color}-tap-to-view-pending {
-    background-color: $value;
-  }
+  background-color: $color-gray-15;
 }
 
 .module-message__container--with-tap-to-view-pending {
@@ -470,14 +467,6 @@
     border: 1px solid $color-gray-60;
     background-color: $color-gray-95;
   }
-  @include ios-theme {
-    border: 1px solid $color-gray-15;
-    background-color: $color-white;
-  }
-  @include ios-dark-theme {
-    border: 1px solid $color-gray-60;
-    background-color: $color-gray-95;
-  }
 }
 
 .module-message__container--with-tap-to-view-error {
@@ -486,17 +475,9 @@
 
   @include light-theme {
     background-color: $color-white;
-    border: 1px solid $color-accent-red;
+    border: 1px solid $color-deep-red;
   }
   @include dark-theme {
-    background-color: $color-gray-95;
-    border: 1px solid $color-deep-red;
-  }
-  @include ios-theme {
-    background-color: $color-white;
-    border: 1px solid $color-deep-red;
-  }
-  @include ios-dark-theme {
     background-color: $color-black;
     border: 1px solid $color-deep-red;
   }
@@ -534,27 +515,10 @@
   height: 20px;
 
   @include light-theme {
-    @include color-svg('../images/icons/v2/view-once-24.svg', $color-white);
-  }
-  @include dark-theme {
-    @include color-svg('../images/icons/v2/view-once-24.svg', $color-gray-05);
-  }
-  @include ios-theme {
     @include color-svg('../images/icons/v2/view-once-24.svg', $color-gray-90);
   }
-  @include ios-dark-theme {
-    @include color-svg('../images/icons/v2/view-once-24.svg', $color-gray-05);
-  }
-}
-.module-message__tap-to-view__icon--outgoing {
-  @include light-theme {
-    background-color: $color-gray-75;
-  }
   @include dark-theme {
-    background-color: $color-gray-05;
-  }
-  @include ios-theme {
-    background-color: $color-white;
+    @include color-svg('../images/icons/v2/view-once-24.svg', $color-gray-05);
   }
 }
 .module-message__tap-to-view__icon--expired {
@@ -564,37 +528,20 @@
   @include dark-theme {
     @include color-svg('../images/icons/v2/viewed-once-24.svg', $color-gray-05);
   }
-  @include ios-theme {
-    @include color-svg('../images/icons/v2/viewed-once-24.svg', $color-gray-75);
-  }
-  @include ios-dark-theme {
-    @include color-svg('../images/icons/v2/viewed-once-24.svg', $color-gray-05);
-  }
+}
+.module-message__tap-to-view__icon--outgoing {
+  background-color: $color-gray-05;
 }
 .module-message__tap-to-view__text {
   @include font-body-1-bold;
 
-  @include light-theme {
-    color: $color-gray-90;
-  }
-  @include dark-theme {
-    color: $color-gray-05;
-  }
-  @include ios-theme {
-    color: $color-gray-90;
-  }
+  color: $color-gray-05;
 }
 .module-message__tap-to-view__text--incoming {
   @include light-theme {
-    color: $color-white;
-  }
-  @include dark-theme {
-    color: $color-gray-05;
-  }
-  @include ios-theme {
     color: $color-gray-90;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-05;
   }
 }
@@ -605,12 +552,6 @@
   @include dark-theme {
     color: $color-gray-05;
   }
-  @include ios-theme {
-    color: $color-gray-90;
-  }
-  @include ios-dark-theme {
-    color: $color-gray-05;
-  }
 }
 .module-message__tap-to-view__text--incoming-error {
   @include light-theme {
@@ -619,23 +560,13 @@
   @include dark-theme {
     color: $color-gray-25;
   }
-  @include ios-theme {
-    color: $color-gray-60;
-  }
 }
 
 .module-message__tap-to-view__text--outgoing {
-  @include ios-theme {
-    color: $color-white;
-  }
+  color: $color-white;
 }
 .module-message__tap-to-view__text--outgoing-expired {
-  @include ios-theme {
-    color: $color-gray-90;
-  }
-  @include ios-dark-theme {
-    color: $color-gray-05;
-  }
+  color: $color-gray-05;
 }
 
 .module-message__attachment-container {
@@ -652,7 +583,6 @@
     bottom: -10px;
   }
 
-  border-radius: 16px;
   line-height: 0;
   overflow: hidden;
 
@@ -665,18 +595,10 @@
 
   &--with-content-below {
     margin-bottom: 7px;
-    border-bottom-left-radius: 0px;
-    border-bottom-right-radius: 0px;
   }
 
   &--with-content-above {
     margin-top: 4px;
-    border-top-left-radius: 0px;
-    border-top-right-radius: 0px;
-  }
-
-  .module-message__container--gif & {
-    border-radius: inherit;
   }
 }
 
@@ -718,7 +640,7 @@
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
@@ -819,23 +741,20 @@
   text-overflow: ellipsis;
 
   @include light-theme {
-    color: $color-gray-90;
+    color: $color-white;
   }
   @include dark-theme {
     color: $color-gray-02;
-  }
-  @include ios-theme {
-    color: $color-white;
   }
 }
 
 .module-message__generic-attachment__file-name--incoming {
   color: $color-white;
 
-  @include ios-theme {
+  @include light-theme {
     color: $color-gray-90;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-25;
   }
 }
@@ -846,23 +765,20 @@
   margin-top: 3px;
 
   @include light-theme {
-    color: $color-gray-90;
+    color: $color-white;
   }
   @include dark-theme {
     color: $color-gray-02;
-  }
-  @include ios-theme {
-    color: $color-white;
   }
 }
 
 .module-message__generic-attachment__file-size--incoming {
   color: $color-white;
 
-  @include ios-theme {
+  @include light-theme {
     color: $color-gray-90;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-25;
   }
 }
@@ -890,7 +806,7 @@
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
@@ -996,15 +912,6 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 
-  color: $color-white-alpha-90;
-
-  @include ios-theme {
-    color: $color-gray-90;
-  }
-  @include ios-dark-theme {
-    color: $color-gray-05;
-  }
-
   &__profile-name {
     @include font-caption-bold-italic;
   }
@@ -1068,15 +975,9 @@
   white-space: pre-wrap;
 
   @include light-theme {
-    color: $color-gray-90;
-  }
-  @include dark-theme {
-    color: $color-gray-05;
-  }
-  @include ios-theme {
     color: $color-white-alpha-90;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-white-alpha-90;
   }
 
@@ -1085,7 +986,7 @@
     outline: none;
 
     @include light-theme {
-      color: $color-gray-90;
+      color: $color-white-alpha-90;
     }
     @include keyboard-mode {
       &:focus {
@@ -1094,21 +995,9 @@
     }
 
     @include dark-theme {
-      color: $color-gray-05;
+      color: $color-white-alpha-90;
     }
     @include dark-keyboard-mode {
-      &:focus {
-        outline: 1px solid $color-gray-05;
-      }
-    }
-
-    @include ios-theme {
-      color: $color-white-alpha-90;
-    }
-    @include ios-dark-theme {
-      color: $color-white-alpha-90;
-    }
-    @include ios-keyboard-mode {
       &:focus {
         outline: 1px solid $color-white-alpha-90;
       }
@@ -1118,15 +1007,9 @@
 
 .module-message__text--incoming {
   @include light-theme {
-    color: $color-white;
-  }
-  @include ios-theme {
     color: $color-gray-90;
   }
   @include dark-theme {
-    color: $color-white-alpha-90;
-  }
-  @include ios-dark-theme {
     color: $color-gray-05;
   }
 
@@ -1135,36 +1018,18 @@
     outline: none;
 
     @include light-theme {
-      color: $color-white;
-    }
-    @include keyboard-mode {
-      &:focus {
-        outline: 1px solid $color-white;
-      }
-    }
-
-    @include dark-theme {
-      color: $color-white-alpha-90;
-    }
-    @include dark-keyboard-mode {
-      &:focus {
-        outline: 1px solid $color-white-alpha-90;
-      }
-    }
-
-    @include ios-theme {
       color: $color-gray-90;
     }
-    @include ios-keyboard-mode {
+    @include keyboard-mode {
       &:focus {
         outline: 1px solid $color-gray-90;
       }
     }
 
-    @include ios-dark-theme {
+    @include dark-theme {
       color: $color-gray-05;
     }
-    @include dark-ios-keyboard-mode {
+    @include dark-keyboard-mode {
       &:focus {
         outline: 1px solid $color-gray-05;
       }
@@ -1211,15 +1076,9 @@
   @include font-caption;
 
   @include light-theme {
-    color: $color-gray-60;
+    color: $color-white-alpha-80;
   }
   @include dark-theme {
-    color: $color-white-alpha-80;
-  }
-  @include ios-theme {
-    color: $color-white-alpha-80;
-  }
-  @include ios-dark-theme {
     color: $color-white-alpha-80;
   }
 }
@@ -1229,10 +1088,10 @@
 .module-message__metadata__date--incoming {
   color: $color-white-alpha-80;
 
-  @include ios-theme {
+  @include light-theme {
     color: $color-gray-60;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-25;
   }
 }
@@ -1243,9 +1102,6 @@
   @include dark-theme {
     color: $color-white-alpha-80;
   }
-  @include ios-theme {
-    color: $color-white;
-  }
 }
 .module-message__metadata__date.module-message__metadata__date--incoming-with-tap-to-view-expired {
   color: $color-gray-75;
@@ -1255,15 +1111,11 @@
   }
 }
 .module-message__metadata__date.module-message__metadata__date--outgoing-with-tap-to-view-expired {
-  color: $color-gray-75;
-
-  @include dark-theme {
-    color: $color-white-alpha-80;
-  }
+  color: $color-white-alpha-80;
 }
 
 .module-message__metadata__date--with-sticker {
-  @include ios-theme {
+  @include light-theme {
     color: $color-gray-60;
   }
 }
@@ -1281,15 +1133,9 @@
   animation: module-message__metadata__status-icon--spinning 4s linear infinite;
 
   @include light-theme {
-    @include color-svg('../images/sending.svg', $color-gray-60);
-  }
-  @include dark-theme {
-    @include color-svg('../images/sending.svg', $color-white-alpha-80);
-  }
-  @include ios-theme {
     @include color-svg('../images/sending.svg', $color-white);
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     @include color-svg('../images/sending.svg', $color-white);
   }
 }
@@ -1303,21 +1149,12 @@
 
 .module-message__metadata__status-icon--sent {
   @include light-theme {
-    @include color-svg('../images/check-circle-outline.svg', $color-gray-60);
+    @include color-svg(
+      '../images/check-circle-outline.svg',
+      $color-white-alpha-80
+    );
   }
   @include dark-theme {
-    @include color-svg(
-      '../images/check-circle-outline.svg',
-      $color-white-alpha-80
-    );
-  }
-  @include ios-theme {
-    @include color-svg(
-      '../images/check-circle-outline.svg',
-      $color-white-alpha-80
-    );
-  }
-  @include ios-dark-theme {
     @include color-svg(
       '../images/check-circle-outline.svg',
       $color-white-alpha-80
@@ -1328,15 +1165,9 @@
   width: 18px;
 
   @include light-theme {
-    @include color-svg('../images/double-check.svg', $color-gray-60);
+    @include color-svg('../images/double-check.svg', $color-white-alpha-80);
   }
   @include dark-theme {
-    @include color-svg('../images/double-check.svg', $color-white-alpha-80);
-  }
-  @include ios-theme {
-    @include color-svg('../images/double-check.svg', $color-white-alpha-80);
-  }
-  @include ios-dark-theme {
     @include color-svg('../images/double-check.svg', $color-white-alpha-80);
   }
 }
@@ -1344,39 +1175,25 @@
   width: 18px;
 
   @include light-theme {
-    @include color-svg('../images/read.svg', $color-gray-60);
+    @include color-svg('../images/read.svg', $color-white-alpha-80);
   }
   @include dark-theme {
-    @include color-svg('../images/read.svg', $color-white-alpha-80);
-  }
-  @include ios-theme {
-    @include color-svg('../images/read.svg', $color-white-alpha-80);
-  }
-  @include ios-dark-theme {
     @include color-svg('../images/read.svg', $color-white-alpha-80);
   }
 }
 
 // When status indicators are overlaid on top of an image, they use different colors
 .module-message__metadata__status-icon--with-image-no-caption {
-  @include light-theme {
-    background-color: $color-white;
-  }
   @include dark-theme {
     background-color: $color-gray-02;
   }
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-white;
   }
 }
 .module-message__metadata__status-icon--with-sticker {
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-gray-60;
-  }
-}
-.module-message__metadata__status-icon--with-tap-to-view-expired {
-  @include ios-theme {
-    background-color: $color-gray-75;
   }
 }
 
@@ -1403,19 +1220,19 @@
   border-bottom-right-radius: 16px;
 
   @include light-theme {
-    color: $ultramarine-ui-light;
+    color: $color-ultramarine;
     background-color: $color-gray-02;
     border: 1px solid $color-black-alpha-20;
   }
   @include dark-theme {
-    color: $ultramarine-ui-dark;
+    color: $color-ultramarine-light;
     background-color: $color-gray-75;
     border: 1px solid $color-gray-45;
   }
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
@@ -1441,7 +1258,7 @@
 
     .module-Avatar {
       @include keyboard-mode {
-        box-shadow: 0 0 0 3px $ultramarine-ui-light;
+        box-shadow: 0 0 0 3px $color-ultramarine;
       }
     }
   }
@@ -1506,16 +1323,8 @@
     }
 
     &--is-me {
-      @include light-theme {
-        color: $color-gray-75;
-      }
-
       @include dark-theme {
         color: $color-gray-15;
-      }
-
-      @include ios-theme {
-        color: $color-white-alpha-90;
       }
     }
   }
@@ -1526,7 +1335,7 @@
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 
@@ -1537,20 +1346,16 @@
 
   @include dark-theme() {
     border-color: $color-gray-95;
-    background: $color-gray-75;
+    background: $color-gray-90;
   }
 
   &--is-me {
+    @include dark-theme() {
+      background: $color-gray-60;
+    }
+
     @include light-theme() {
       background: $color-gray-25;
-    }
-
-    @include dark-theme() {
-      background: $color-gray-45;
-    }
-
-    @include ios-theme() {
-      background: $color-accent-blue;
     }
   }
 }
@@ -1564,16 +1369,13 @@
   margin-left: 6px;
   margin-bottom: 2px;
 
-  @include light-theme {
-    @include color-svg('../images/icons/v2/timer-60-12.svg', $color-gray-60);
-  }
   @include dark-theme {
     @include color-svg(
       '../images/icons/v2/timer-60-12.svg',
       $color-white-alpha-80
     );
   }
-  @include ios-theme {
+  @include light-theme {
     @include color-svg(
       '../images/icons/v2/timer-60-12.svg',
       $color-white-alpha-80
@@ -1586,19 +1388,13 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 
 @each $timer-icon in $timer-icons {
   .module-expire-timer--#{$timer-icon} {
-    @include light-theme {
-      @include color-svg(
-        '../images/icons/v2/timer-#{$timer-icon}-12.svg',
-        $color-gray-60
-      );
-    }
     @include dark-theme {
       @include color-svg(
         '../images/icons/v2/timer-#{$timer-icon}-12.svg',
         $color-white-alpha-80
       );
     }
-    @include ios-theme {
+    @include light-theme {
       @include color-svg(
         '../images/icons/v2/timer-#{$timer-icon}-12.svg',
         $color-white-alpha-80
@@ -1610,10 +1406,10 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 .module-expire-timer--incoming {
   background-color: $color-white-alpha-80;
 
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-gray-60;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     background-color: $color-gray-25;
   }
 }
@@ -1625,14 +1421,10 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   }
 }
 .module-expire-timer.module-expire-timer--outgoing-with-tap-to-view-expired {
-  background-color: $color-gray-75;
-
-  @include dark-theme {
-    background-color: $color-white-alpha-80;
-  }
+  background-color: $color-white-alpha-80;
 }
 .module-expire-timer--with-sticker {
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-gray-60;
   }
 }
@@ -1640,9 +1432,6 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 // When status indicators are overlaid on top of an image, they use different colors
 .module-expire-timer--with-image-no-caption {
   @include light-theme {
-    background-color: $color-white;
-  }
-  @include ios-theme {
     background-color: $color-white;
   }
   @include dark-theme {
@@ -1684,7 +1473,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
@@ -1704,99 +1493,67 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 }
 
 .module-quote--outgoing {
-  border-left-color: $color-conversation-grey;
-  @include light-theme {
-    background-color: $color-conversation-grey-tint;
-  }
-  @include dark-theme {
-    background-color: $color-conversation-grey-shade;
-  }
+  border-left-color: $color-steel;
+  background-color: $color-steel;
 
   // To preserve contrast
-  @include ios-keyboard-mode {
+  @include keyboard-mode {
     &:focus {
       box-shadow: 0px 0px 0px 2px $color-white;
-    }
-  }
-
-  // Note: both of these override all of the specific color classes below
-  @include ios-dark-theme {
-    background-color: $ultramarine-brand-dark;
-    border-left-color: $color-black;
-  }
-  @include ios-theme {
-    background-color: $color-ios-blue-tint;
-    border-left-color: $color-white;
-  }
-}
-
-.module-composition-area__row {
-  .module-quote--outgoing {
-    border-left-style: solid;
-
-    @include ios-dark-theme {
-      background-color: $ultramarine-brand-dark;
-      border-left-color: $color-ios-blue-tint;
-    }
-    @include ios-theme {
-      background-color: $color-ios-blue-tint;
-      border-left-color: $ultramarine-ui-light;
     }
   }
 }
 
 @each $color, $value in $conversation-colors {
-  .module-quote--outgoing-#{$color} {
+  .module-quote--incoming-#{$color} {
+    background-color: scale-color($value, $lightness: 60%);
     border-left-color: $value;
-  }
-}
-@each $color, $value in $conversation-colors-tint {
-  .module-quote--outgoing-#{$color} {
-    @include light-theme {
-      background-color: $value;
-    }
-  }
-}
-@each $color, $value in $conversation-colors-shade {
-  .module-quote--outgoing-#{$color} {
-    @include dark-theme {
-      background-color: $value;
-    }
-  }
-}
 
-.module-quote--incoming {
-  @include light-theme {
+    @include dark-theme {
+      background-color: scale-color($value, $lightness: -40%);
+    }
+  }
+
+  .module-quote--outgoing-#{$color} {
+    background-color: scale-color($value, $lightness: 60%);
     border-left-color: $color-white;
-    background-color: $color-conversation-grey-tint;
-  }
-  @include dark-theme {
-    border-left-color: $color-black;
-    background-color: $color-conversation-grey-shade;
-  }
 
-  // Note: both of these override all of the specific color classes below
-  @include ios-theme {
-    background-color: $color-ios-blue-tint;
-    border-left-color: $ultramarine-ui-light;
-  }
-  @include ios-dark-theme {
-    background-color: $ultramarine-brand-dark;
-    border-left-color: $color-ios-blue-tint;
-  }
-}
-@each $color, $value in $conversation-colors-tint {
-  .module-quote--incoming-#{$color} {
-    @include light-theme {
-      background-color: $value;
-    }
-  }
-}
-@each $color, $value in $conversation-colors-shade {
-  .module-quote--incoming-#{$color} {
     @include dark-theme {
-      background-color: $value;
+      background-color: scale-color($value, $lightness: -40%);
+      border-left-color: $color-white;
     }
+  }
+}
+
+.module-quote--incoming-custom,
+.module-quote--outgoing-custom {
+  background-attachment: fixed;
+}
+
+@each $color, $value in $conversation-colors-gradient {
+  .module-quote--incoming-#{$color} {
+    border-left-color: map-get($value, 'start');
+  }
+  .module-quote--incoming-#{$color},
+  .module-quote--outgoing-#{$color} {
+    background-attachment: fixed;
+    @include light-theme {
+      background-image: linear-gradient(
+        map-get($value, 'deg'),
+        scale-color(map-get($value, 'start'), $lightness: 60%),
+        scale-color(map-get($value, 'end'), $lightness: 60%)
+      );
+    }
+    @include dark-theme {
+      background-image: linear-gradient(
+        map-get($value, 'deg'),
+        scale-color(map-get($value, 'start'), $lightness: -40%),
+        scale-color(map-get($value, 'end'), $lightness: -40%)
+      );
+    }
+  }
+  .module-quote--outgoing-#{$color} {
+    border-left-color: $color-white;
   }
 }
 
@@ -1822,15 +1579,12 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
     color: $color-gray-90;
   }
   @include dark-theme {
-    color: $color-gray-02;
-  }
-  @include ios-dark-theme {
     color: $color-gray-05;
   }
 }
 
 .module-quote__primary__author--incoming {
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-05;
   }
 }
@@ -1851,12 +1605,6 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
     }
   }
   @include dark-theme {
-    color: $color-gray-02;
-    a {
-      color: $color-gray-02;
-    }
-  }
-  @include ios-dark-theme {
     color: $color-gray-05;
     a {
       color: $color-gray-05;
@@ -1881,7 +1629,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 }
 
 .module-quote__primary__text--incoming {
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-05;
     a {
       color: $color-gray-05;
@@ -1896,15 +1644,12 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
     color: $color-gray-90;
   }
   @include dark-theme {
-    color: $color-gray-02;
-  }
-  @include ios-dark-theme {
     color: $color-gray-05;
   }
 }
 
 .module-quote__primary__type-label--incoming {
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-05;
   }
 }
@@ -1926,7 +1671,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 
   @include keyboard-mode {
     &:focus-within {
-      background-color: $ultramarine-ui-light;
+      background-color: $color-ultramarine;
     }
   }
 }
@@ -1985,25 +1730,28 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 }
 
 .module-quote__icon-container__icon--file {
-  @include color-svg('../images/file.svg', $ultramarine-ui-light);
+  @include color-svg('../images/file.svg', $color-ultramarine);
 }
 .module-quote__icon-container__icon--image {
-  @include color-svg('../images/image.svg', $ultramarine-ui-light);
+  @include color-svg('../images/image.svg', $color-ultramarine);
 }
 .module-quote__icon-container__icon--microphone {
   @include color-svg(
     '../images/icons/v2/mic-outline-24.svg',
-    $ultramarine-ui-light
+    $color-ultramarine
   );
 }
 .module-quote__icon-container__icon--play {
   @include color-svg(
     '../images/icons/v2/play-solid-24.svg',
-    $ultramarine-ui-light
+    $color-ultramarine
   );
 }
 .module-quote__icon-container__icon--movie {
-  @include color-svg('../images/movie.svg', $ultramarine-ui-light);
+  @include color-svg('../images/movie.svg', $color-ultramarine);
+}
+.module-quote__icon-container__icon--view-once {
+  @include color-svg('../images/icons/v2/view-once-24.svg', $color-ultramarine);
 }
 
 .module-quote__generic-file {
@@ -2033,15 +1781,12 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
     color: $color-gray-90;
   }
   @include dark-theme {
-    color: $color-gray-02;
-  }
-  @include ios-dark-theme {
     color: $color-gray-05;
   }
 }
 
 .module-quote__generic-file__text--incoming {
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-05;
   }
 }
@@ -2055,29 +1800,10 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 
   border-bottom-left-radius: 4px;
   border-bottom-right-radius: 4px;
+  border-left-style: solid;
+  border-left-width: 4px;
   padding-left: 8px;
   padding-right: 8px;
-
-  background-color: $color-white-alpha-80;
-  @include dark-theme {
-    background-color: $color-white-alpha-20;
-  }
-  @include ios-theme {
-    background-color: $color-ios-ref-warning-light;
-  }
-  @include ios-dark-theme {
-    background-color: $color-ios-ref-warning-dark;
-  }
-}
-
-.module-quote__reference-warning--incoming {
-  color: $color-gray-90;
-  @include ios-theme {
-    background-color: $color-ios-ref-warning-light;
-  }
-  @include ios-dark-theme {
-    background-color: $color-ios-ref-warning-dark;
-  }
 }
 
 .module-quote__reference-warning__icon {
@@ -2085,25 +1811,19 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   width: 16px;
 
   @include light-theme {
-    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-60);
+    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-90);
   }
   @include dark-theme {
-    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-25);
-  }
-  @include ios-theme {
-    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-90);
-  }
-  @include ios-dark-theme {
-    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-90);
+    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-05);
   }
 }
 
 .module-quote__reference-warning__icon--incoming {
-  @include ios-theme {
+  @include light-theme {
     @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-90);
   }
-  @include ios-dark-theme {
-    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-90);
+  @include dark-theme {
+    @include color-svg('../images/icons/v2/link-broken-16.svg', $color-gray-05);
   }
 }
 
@@ -2116,16 +1836,13 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
     color: $color-gray-90;
   }
   @include dark-theme {
-    color: $color-gray-02;
-  }
-  @include ios-dark-theme {
-    color: $color-gray-90;
+    color: $color-gray-05;
   }
 }
 
 .module-quote__reference-warning__text--incoming {
-  @include ios-dark-theme {
-    color: $color-gray-90;
+  @include dark-theme {
+    color: $color-gray-05;
   }
 }
 
@@ -2177,13 +1894,13 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
 
 .module-embedded-contact--outgoing {
-  @include ios-keyboard-mode {
+  @include keyboard-mode {
     &:focus {
       box-shadow: 0px 0px 0px 2px $color-white;
     }
@@ -2221,15 +1938,9 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   text-overflow: ellipsis;
 
   @include light-theme {
-    color: $color-gray-90;
-  }
-  @include dark-theme {
-    color: $color-gray-02;
-  }
-  @include ios-theme {
     color: $color-white;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-05;
   }
 }
@@ -2237,10 +1948,10 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 .module-embedded-contact__contact-name--incoming {
   color: $color-white;
 
-  @include ios-theme {
+  @include light-theme {
     color: $color-gray-90;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     color: $color-gray-25;
   }
 }
@@ -2254,13 +1965,10 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   overflow-x: hidden;
   text-overflow: ellipsis;
 
-  @include light-theme {
-    color: $color-gray-60;
-  }
   @include dark-theme {
     color: $color-white-alpha-80;
   }
-  @include ios-theme {
+  @include light-theme {
     color: $color-white-alpha-80;
   }
 }
@@ -2268,7 +1976,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
 .module-embedded-contact__contact-method--incoming {
   color: $color-white-alpha-80;
 
-  @include ios-theme {
+  @include light-theme {
     color: $color-gray-60;
   }
 }
@@ -2300,7 +2008,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   @include button-reset;
 
   border-radius: 4px;
-  background-color: $ultramarine-ui-light;
+  background-color: $color-ultramarine;
   display: inline-block;
   padding: 6px;
   margin-top: 20px;
@@ -2463,7 +2171,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   padding: 12px;
   border-radius: 4px;
 
-  color: $ultramarine-ui-light;
+  color: $color-ultramarine;
 
   @include light-theme {
     background-color: $color-gray-02;
@@ -2714,6 +2422,19 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
   margin-top: 1px;
 }
 
+// Module: Universal Timer Notification
+
+.module-universal-timer-notification {
+  text-align: center;
+
+  @include light-theme {
+    color: $color-gray-60;
+  }
+  @include dark-theme {
+    color: $color-gray-05;
+  }
+}
+
 .module-notification--with-click-handler {
   cursor: pointer;
 }
@@ -2858,7 +2579,7 @@ $timer-icons: '55', '50', '45', '40', '35', '30', '25', '20', '15', '10', '05',
     &:focus {
       @include color-svg(
         '../images/icons/v2/profile-circle-outline-24.svg',
-        $ultramarine-ui-light
+        $color-ultramarine
       );
     }
   }
@@ -2882,19 +2603,17 @@ button.module-conversation-details__action-button {
 
 .module-conversation-details {
   &-header {
-    &__root,
-    &__root--editable {
+    &__root {
       align-items: center;
-      background: none;
-      border: none;
-      color: inherit;
       display: flex;
       flex-direction: column;
-      margin: 0;
-      outline: inherit;
-      padding: 0 0 24px 0;
+      margin: 0 0 24px 0;
       text-align: center;
       width: 100%;
+    }
+
+    &__root--editable {
+      @include button-reset();
     }
 
     &__root--editable {
@@ -2905,6 +2624,7 @@ button.module-conversation-details__action-button {
       @include font-title-1;
       align-items: center;
       display: flex;
+      justify-content: center;
       padding-bottom: 8px;
       padding-top: 12px;
     }
@@ -2912,6 +2632,7 @@ button.module-conversation-details__action-button {
     &__subtitle {
       @include font-body-1;
       color: $color-gray-60;
+      justify-content: center;
       padding-bottom: 6px;
 
       @include dark-theme {
@@ -2946,6 +2667,10 @@ button.module-conversation-details__action-button {
     &__root--editable:hover &__title::after {
       opacity: 1;
     }
+  }
+
+  &__chat-color {
+    @include color-bubble(20px);
   }
 
   &-membership-list {
@@ -3058,6 +2783,21 @@ button.module-conversation-details__action-button {
         width: 24px;
         height: 24px;
         -webkit-mask-size: 100%;
+      }
+
+      &--color {
+        &::after {
+          -webkit-mask: url(../images/icons/v2/color-outline-24.svg) no-repeat
+            center;
+
+          @include light-theme {
+            background-color: $color-gray-75;
+          }
+
+          @include dark-theme {
+            background-color: $color-gray-15;
+          }
+        }
       }
 
       &--timer {
@@ -3312,10 +3052,10 @@ button.module-conversation-details__action-button {
       }
 
       @include keyboard-mode {
-        @include keyboard-focus-state($ultramarine-ui-light);
+        @include keyboard-focus-state($color-ultramarine);
       }
       @include dark-keyboard-mode {
-        @include keyboard-focus-state($ultramarine-ui-dark);
+        @include keyboard-focus-state($color-ultramarine-light);
       }
     }
 
@@ -3330,7 +3070,8 @@ button.module-conversation-details__action-button {
       margin-right: 12px;
     }
 
-    &__info {
+    &__info,
+    &__right-info {
       @include font-body-2;
       margin-top: 4px;
 
@@ -3344,7 +3085,17 @@ button.module-conversation-details__action-button {
     }
 
     &__right {
+      position: relative;
       color: $color-gray-45;
+      min-width: 143px;
+    }
+
+    &__right-info {
+      position: absolute;
+
+      @include font-subtitle;
+
+      padding-left: 14px;
     }
 
     &__actions {
@@ -3402,60 +3153,6 @@ button.module-conversation-details__action-button {
 
     &__title {
       @include font-body-1-bold;
-    }
-  }
-
-  &-select {
-    position: relative;
-
-    select {
-      @include font-body-2;
-      -webkit-appearance: none;
-      border-radius: 4px;
-      border: 1px solid $color-gray-25;
-      cursor: pointer;
-      height: 40px;
-      min-width: 124px;
-      outline: 0;
-      padding: 10px;
-      padding-left: 12px;
-      padding-right: 32px;
-      text-overflow: ellipsis;
-      width: 100%;
-
-      @include dark-theme {
-        background-color: $color-gray-90;
-        border-color: $color-gray-60;
-        color: $color-gray-05;
-      }
-
-      &:focus {
-        border: 3px solid $ultramarine-ui-light;
-        line-height: 14px;
-        padding-left: 10px;
-      }
-    }
-
-    &::after {
-      border: 2px solid $color-gray-60;
-      border-radius: 2px;
-      border-right: 0;
-      border-top: 0;
-      content: ' ';
-      display: block;
-      height: 10px;
-      pointer-events: none;
-      position: absolute;
-      right: 15px;
-      top: 14px;
-      transform-origin: center;
-      transform: rotate(-45deg);
-      width: 10px;
-      z-index: 2;
-
-      @include dark-theme {
-        border-color: $color-gray-15;
-      }
     }
   }
 }
@@ -3706,7 +3403,7 @@ button.module-conversation-details__action-button {
 }
 
 .module-media-gallery__tab--active {
-  border-bottom: 2px solid $ultramarine-ui-light;
+  border-bottom: 2px solid $color-ultramarine;
 }
 
 .module-media-gallery__content {
@@ -3768,7 +3465,7 @@ button.module-conversation-details__action-button {
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
@@ -3815,7 +3512,7 @@ button.module-conversation-details__action-button {
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 }
@@ -3868,7 +3565,7 @@ button.module-conversation-details__action-button {
   width: 24px;
   @include color-svg(
     '../images/icons/v2/play-solid-24.svg',
-    $ultramarine-ui-light
+    $color-ultramarine
   );
 }
 
@@ -3918,7 +3615,9 @@ button.module-conversation-details__action-button {
 
   &__with {
     @include font-body-2;
+    margin: 0 auto;
     margin-bottom: 16px;
+    max-width: 500px;
 
     @include light-theme {
       color: $color-gray-60;
@@ -4101,7 +3800,7 @@ button.module-conversation-details__action-button {
       }
 
       &:focus {
-        border: solid 1px $ultramarine-ui-light;
+        border: solid 1px $color-ultramarine;
         outline: none;
       }
 
@@ -4162,7 +3861,7 @@ button.module-conversation-details__action-button {
         width: 16px;
         border-radius: 8px;
 
-        background-color: $ultramarine-ui-light;
+        background-color: $color-ultramarine;
       }
 
       &__avatar {
@@ -4229,7 +3928,7 @@ button.module-conversation-details__action-button {
     }
 
     &:focus {
-      @include color-svg($icon, $ultramarine-ui-light);
+      @include color-svg($icon, $color-ultramarine);
     }
   }
 }
@@ -4269,7 +3968,7 @@ button.module-conversation-details__action-button {
   &:focus {
     span {
       background-color: $color-gray-75;
-      border: 4px solid $ultramarine-ui-light;
+      border: 4px solid $color-ultramarine;
       box-sizing: border-box;
       outline: none;
     }
@@ -4450,13 +4149,13 @@ button.module-conversation-details__action-button {
     right: 1px;
     border-radius: 10px;
 
-    box-shadow: 0 0 0 3px $ultramarine-ui-light;
+    box-shadow: 0 0 0 3px $color-ultramarine;
   }
 }
 
 button.module-image__border-overlay:focus {
   @include keyboard-mode {
-    box-shadow: inset 0px 0px 0px 2px $ultramarine-ui-light;
+    box-shadow: inset 0px 0px 0px 2px $color-ultramarine;
   }
 }
 
@@ -4532,7 +4231,7 @@ button.module-image__border-overlay:focus {
   width: 24px;
   @include color-svg(
     '../images/icons/v2/play-solid-24.svg',
-    $ultramarine-ui-light
+    $color-ultramarine
   );
 }
 
@@ -4568,7 +4267,7 @@ button.module-image__border-overlay:focus {
 
   @include keyboard-mode {
     &:focus {
-      outline: 2px solid $ultramarine-ui-light;
+      outline: 2px solid $color-ultramarine;
     }
   }
 }
@@ -4624,13 +4323,10 @@ button.module-image__border-overlay:focus {
   width: 6px;
   opacity: 0.4;
 
-  @include light-theme {
-    background-color: $color-gray-60;
-  }
   @include dark-theme {
     background-color: $color-white;
   }
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-gray-60;
   }
 }
@@ -4644,7 +4340,7 @@ button.module-image__border-overlay:focus {
 
   background-color: $color-white;
 
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-gray-60;
   }
 }
@@ -4726,7 +4422,7 @@ button.module-image__border-overlay:focus {
 
   @include keyboard-mode {
     &:focus {
-      @include color-svg('../images/icons/v2/x-24.svg', $ultramarine-ui-light);
+      @include color-svg('../images/icons/v2/x-24.svg', $color-ultramarine);
     }
   }
 }
@@ -4934,7 +4630,7 @@ button.module-image__border-overlay:focus {
     color: $color-white-alpha-80;
   }
   &:focus {
-    border: 1px solid $ultramarine-ui-light;
+    border: 1px solid $color-ultramarine;
     outline: none;
   }
 }
@@ -4943,7 +4639,7 @@ button.module-image__border-overlay:focus {
   @include button-reset;
 
   position: absolute;
-  background-color: $ultramarine-ui-light;
+  background-color: $color-ultramarine;
   color: $color-white;
 
   height: 28px;
@@ -4979,7 +4675,7 @@ button.module-image__border-overlay:focus {
   }
   @include keyboard-mode {
     &:focus {
-      box-shadow: inset 0 0 0 2px $ultramarine-ui-light;
+      box-shadow: inset 0 0 0 2px $color-ultramarine;
     }
   }
 
@@ -4992,7 +4688,7 @@ button.module-image__border-overlay:focus {
   }
   @include dark-keyboard-mode {
     &:focus {
-      box-shadow: inset 0 0 0 2px $ultramarine-ui-light;
+      box-shadow: inset 0 0 0 2px $color-ultramarine;
     }
   }
 }
@@ -5125,7 +4821,7 @@ button.module-image__border-overlay:focus {
   }
   @include keyboard-mode {
     &:focus {
-      @include color-svg('../images/icons/v2/x-24.svg', $ultramarine-ui-light);
+      @include color-svg('../images/icons/v2/x-24.svg', $color-ultramarine);
     }
   }
 
@@ -5134,7 +4830,10 @@ button.module-image__border-overlay:focus {
   }
   @include dark-keyboard-mode {
     &:focus {
-      @include color-svg('../images/icons/v2/x-24.svg', $ultramarine-ui-dark);
+      @include color-svg(
+        '../images/icons/v2/x-24.svg',
+        $color-ultramarine-light
+      );
     }
   }
 }
@@ -5213,38 +4912,26 @@ button.module-image__border-overlay:focus {
 }
 .module-spinner__arc--incoming {
   @include light-theme {
-    background-color: $color-white;
-  }
-  @include dark-theme {
-    background-color: $color-gray-02;
-  }
-  @include ios-theme {
     background-color: $color-gray-60;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     background-color: $color-gray-02;
   }
 }
 
 .module-spinner__circle--outgoing {
+  @include light-theme {
+    background-color: $color-white-alpha-40;
+  }
   @include dark-theme {
-    background-color: $color-white-alpha-40;
-  }
-  @include ios-theme {
-    background-color: $color-white-alpha-40;
-  }
-  @include ios-dark-theme {
     background-color: $color-white-alpha-40;
   }
 }
 .module-spinner__arc--outgoing {
-  @include dark-theme {
-    background-color: $color-gray-05;
-  }
-  @include ios-theme {
+  @include light-theme {
     background-color: $color-white;
   }
-  @include ios-dark-theme {
+  @include dark-theme {
     background-color: $color-gray-05;
   }
 }
@@ -5282,7 +4969,7 @@ button.module-image__border-overlay:focus {
   }
 }
 .module-spinner__arc--on-progress-dialog {
-  background-color: $ultramarine-ui-light;
+  background-color: $color-ultramarine;
 }
 .module-spinner__arc--on-avatar {
   background-color: $color-white;
@@ -5313,28 +5000,12 @@ button.module-image__border-overlay:focus {
 }
 
 .module-message-body__at-mention--incoming {
-  @include ios-theme {
-    @include light-theme {
-      background-color: $color-gray-20;
-    }
-  }
-
-  @include ios-dark-theme {
-    background-color: $color-gray-60;
-  }
-}
-
-.module-message-body__at-mention--outgoing {
   @include light-theme {
     background-color: $color-gray-20;
   }
 
   @include dark-theme {
     background-color: $color-gray-60;
-  }
-
-  @include ios-theme {
-    background-color: $ultramarine-brand-dark;
   }
 }
 
@@ -5387,7 +5058,7 @@ button.module-image__border-overlay:focus {
       }
       @include keyboard-mode {
         &:focus {
-          box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+          box-shadow: 0px 0px 0px 2px $color-ultramarine;
         }
       }
 
@@ -5580,7 +5251,7 @@ button.module-image__border-overlay:focus {
         display: block;
         width: 4px;
         height: 4px;
-        background: $ultramarine-ui-light;
+        background: $color-ultramarine;
         border-radius: 2px;
         position: absolute;
         bottom: 4px;
@@ -5756,13 +5427,13 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 4px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 4px $color-ultramarine;
       }
     }
 
     @include mouse-mode {
       &:hover {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
 
@@ -5781,13 +5452,13 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 4px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 4px $color-ultramarine;
       }
     }
 
     @include mouse-mode {
       &:hover {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
 
@@ -5803,13 +5474,13 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 4px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 4px $color-ultramarine;
       }
     }
 
     @include mouse-mode {
       &:hover {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
 
@@ -5828,13 +5499,13 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 4px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 4px $color-ultramarine;
       }
     }
 
     @include mouse-mode {
       &:hover {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
 
@@ -6353,7 +6024,7 @@ button.module-image__border-overlay:focus {
     top: 12px;
     transition: top 200ms ease-out, opacity 200ms ease-out;
     user-select: none;
-    z-index: 1;
+    z-index: 3;
 
     &--hidden {
       opacity: 0;
@@ -6639,7 +6310,7 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        outline: 2px solid $ultramarine-ui-light;
+        outline: 2px solid $color-ultramarine;
       }
     }
   }
@@ -6816,11 +6487,11 @@ button.module-image__border-overlay:focus {
         padding-left: 12px;
 
         @include light-theme {
-          border-left: 4px solid $ultramarine-ui-light;
+          border-left: 4px solid $color-ultramarine;
         }
 
         @include dark-theme {
-          border-left: 4px solid $ultramarine-ui-dark;
+          border-left: 4px solid $color-ultramarine-light;
         }
       }
 
@@ -6859,11 +6530,11 @@ button.module-image__border-overlay:focus {
         color: $color-white;
 
         @include light-theme {
-          background-color: $ultramarine-ui-light;
+          background-color: $color-ultramarine;
           box-shadow: 0px 0px 0px 1px $color-gray-02;
         }
         @include dark-theme {
-          background-color: $ultramarine-ui-dark;
+          background-color: $color-ultramarine-light;
           box-shadow: 0px 0px 0px 1px $color-gray-90;
         }
       }
@@ -7136,7 +6807,7 @@ button.module-image__border-overlay:focus {
         @include keyboard-mode {
           &:focus {
             border-width: 2px;
-            border-color: $ultramarine-ui-light;
+            border-color: $color-ultramarine;
             &:checked {
               box-shadow: inset 0 0 0px 1px $color-white;
             }
@@ -7145,7 +6816,7 @@ button.module-image__border-overlay:focus {
         @include dark-keyboard-mode {
           &:focus {
             border-width: 2px;
-            border-color: $ultramarine-ui-dark;
+            border-color: $color-ultramarine-light;
 
             &:checked {
               box-shadow: inset 0 0 0px 1px $color-black;
@@ -7160,7 +6831,7 @@ button.module-image__border-overlay:focus {
         &:checked {
           $icon: '../images/icons/v2/check-24.svg';
 
-          background: $ultramarine-ui-light;
+          background: $color-ultramarine;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -7292,7 +6963,7 @@ button.module-image__border-overlay:focus {
         &:focus {
           @include color-svg(
             '../images/icons/v2/chevron-left-24.svg',
-            $ultramarine-ui-light
+            $color-ultramarine
           );
         }
       }
@@ -7307,7 +6978,7 @@ button.module-image__border-overlay:focus {
         &:hover {
           @include color-svg(
             '../images/icons/v2/chevron-left-24.svg',
-            $ultramarine-ui-dark
+            $color-ultramarine-light
           );
         }
       }
@@ -7669,7 +7340,7 @@ button.module-image__border-overlay:focus {
       width: 14px;
       height: 14px;
       border-radius: 7px;
-      background: $ultramarine-ui-light;
+      background: $color-ultramarine;
     }
   }
 }
@@ -7780,11 +7451,11 @@ button.module-image__border-overlay:focus {
 
     &--hint {
       @include light-theme() {
-        color: $ultramarine-ui-light;
+        color: $color-ultramarine;
       }
 
       @include dark-theme() {
-        color: $ultramarine-ui-dark;
+        color: $color-ultramarine-light;
       }
     }
 
@@ -7907,7 +7578,7 @@ button.module-image__border-overlay:focus {
 
   @include keyboard-mode {
     &:focus {
-      box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+      box-shadow: 0px 0px 0px 2px $color-ultramarine;
     }
   }
 
@@ -8011,11 +7682,11 @@ button.module-image__border-overlay:focus {
 
   &--blue {
     @include light-theme {
-      background: $ultramarine-ui-light;
+      background: $color-ultramarine;
       color: $color-white;
     }
     @include dark-theme {
-      background: $ultramarine-ui-dark;
+      background: $color-ultramarine-light;
       color: $color-white;
     }
   }
@@ -8447,13 +8118,13 @@ button.module-image__border-overlay:focus {
 
       &:focus {
         @include keyboard-mode {
-          box-shadow: 0 0 0 3px $ultramarine-ui-light;
+          box-shadow: 0 0 0 3px $color-ultramarine;
         }
       }
 
       &:hover {
         @include mouse-mode {
-          box-shadow: 0 0 0 3px $ultramarine-ui-light;
+          box-shadow: 0 0 0 3px $color-ultramarine;
         }
       }
     }
@@ -8552,7 +8223,7 @@ button.module-image__border-overlay:focus {
           border-color: $color-gray-60;
 
           &:focus {
-            border-color: $ultramarine-ui-light;
+            border-color: $color-ultramarine;
           }
 
           &:placeholder {
@@ -8566,7 +8237,7 @@ button.module-image__border-overlay:focus {
           color: $color-gray-05;
 
           &:focus {
-            border-color: $ultramarine-ui-light;
+            border-color: $color-ultramarine;
           }
 
           &:placeholder {
@@ -8917,11 +8588,11 @@ button.module-image__border-overlay:focus {
   border-radius: 4px;
 
   @include light-theme {
-    color: $ultramarine-ui-light;
+    color: $color-ultramarine;
     background-color: $color-gray-02;
   }
   @include dark-theme {
-    color: $ultramarine-ui-dark;
+    color: $color-ultramarine-light;
     background-color: $color-gray-75;
   }
 }
@@ -8970,6 +8641,7 @@ button.module-image__border-overlay:focus {
       caret-color: transparent;
       padding: 0;
       text-align: start;
+      white-space: break-spaces;
 
       &--loaded {
         caret-color: auto;
@@ -9059,11 +8731,11 @@ button.module-image__border-overlay:focus {
 
     &:focus-within {
       @include light-theme() {
-        border: 1px solid $ultramarine-ui-light;
+        border: 1px solid $color-ultramarine;
       }
 
       @include dark-theme() {
-        border: 1px solid $ultramarine-ui-light;
+        border: 1px solid $color-ultramarine;
       }
     }
   }
@@ -9202,10 +8874,7 @@ button.module-image__border-overlay:focus {
       width: 24px;
       height: 24px;
       flex-shrink: 0;
-      @include color-svg(
-        '../images/icons/v2/send-24.svg',
-        $ultramarine-ui-light
-      );
+      @include color-svg('../images/icons/v2/send-24.svg', $color-ultramarine);
     }
   }
   &__input {
@@ -9397,10 +9066,10 @@ button.module-image__border-overlay:focus {
 }
 
 .module-scroll-down__button--new-messages {
-  background-color: $ultramarine-ui-light;
+  background-color: $color-ultramarine;
 
   &:hover {
-    background-color: $ultramarine-brand-dark;
+    background-color: $color-ultramarine-dark;
   }
 }
 
@@ -9546,6 +9215,17 @@ button.module-image__border-overlay:focus {
     );
   }
 }
+.module-avatar-popup__item__icon-colors {
+  @include light-theme {
+    @include color-svg(
+      '../images/icons/v2/color-outline-24.svg',
+      $color-gray-75
+    );
+  }
+  @include dark-theme {
+    @include color-svg('../images/icons/v2/color-solid-24.svg', $color-gray-15);
+  }
+}
 .module-avatar-popup__item__icon-archive {
   @include light-theme {
     @include color-svg(
@@ -9649,10 +9329,13 @@ button.module-image__border-overlay:focus {
 
   &:focus {
     @include keyboard-mode {
-      @include color-svg('../images/icons/v2/x-24.svg', $ultramarine-ui-light);
+      @include color-svg('../images/icons/v2/x-24.svg', $color-ultramarine);
     }
     @include dark-keyboard-mode {
-      @include color-svg('../images/icons/v2/x-24.svg', $ultramarine-ui-dark);
+      @include color-svg(
+        '../images/icons/v2/x-24.svg',
+        $color-ultramarine-light
+      );
     }
   }
 }
@@ -9810,7 +9493,7 @@ button.module-image__border-overlay:focus {
 
   @include keyboard-mode {
     &:focus {
-      outline: 2px solid $ultramarine-ui-light;
+      outline: 2px solid $color-ultramarine;
     }
   }
 }
@@ -9902,6 +9585,10 @@ button.module-image__border-overlay:focus {
 
   margin-left: auto;
   margin-right: auto;
+}
+
+.module-group-v2-change--button-container {
+  margin-top: 10px;
 }
 
 // Module: GV1 Migration
@@ -10128,10 +9815,10 @@ button.module-image__border-overlay:focus {
 
   &:focus {
     @include keyboard-mode {
-      background-color: $ultramarine-ui-light;
+      background-color: $color-ultramarine;
     }
     @include dark-keyboard-mode {
-      background-color: $ultramarine-ui-dark;
+      background-color: $color-ultramarine-light;
     }
   }
 }
@@ -10145,10 +9832,17 @@ button.module-image__border-overlay:focus {
   text-align: center;
 }
 .module-group-v2-join-dialog__metadata {
+  color: $color-gray-60;
   text-align: center;
 }
 .module-group-v2-join-dialog__prompt {
   margin-top: 40px;
+
+  &--approval {
+    @include font-subtitle;
+    color: $color-gray-45;
+    margin-top: 40px;
+  }
 }
 .module-group-v2-join-dialog__buttons {
   margin-top: 16px;
@@ -10165,6 +9859,10 @@ button.module-image__border-overlay:focus {
   &:not(:first-of-type) {
     margin-left: 16px;
   }
+}
+.module-group-v2-join-dialog__description {
+  color: $color-gray-60;
+  margin-top: 12px;
 }
 
 // Module: Progress Dialog
@@ -10228,7 +9926,7 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
 
@@ -10261,7 +9959,7 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
   }
@@ -10278,7 +9976,7 @@ button.module-image__border-overlay:focus {
 
     @include keyboard-mode {
       &:focus {
-        box-shadow: 0px 0px 0px 2px $ultramarine-ui-light;
+        box-shadow: 0px 0px 0px 2px $color-ultramarine;
       }
     }
   }
@@ -10486,7 +10184,7 @@ $contact-modal-padding: 18px;
 
   &:focus {
     @include keyboard-mode {
-      background-color: $ultramarine-ui-light;
+      background-color: $color-ultramarine;
     }
   }
 }
@@ -10496,7 +10194,7 @@ $contact-modal-padding: 18px;
     background-color: $color-black-alpha-40;
   }
 
-  @each $color, $value in $conversation-colors {
+  @each $color, $value in $avatar-colors {
     &__#{$color} {
       background-color: $value;
     }
@@ -10635,16 +10333,62 @@ $contact-modal-padding: 18px;
   padding: 5px 12px;
 }
 
-// Module: Chat Session Refreshed Dialog
+// Module: Delivery Issue Notification
 
-.module-chat-session-refreshed-dialog {
-  width: 360px;
-  padding: 16px;
-  padding-top: 28px;
-  border-radius: 8px;
+.module-delivery-issue-notification {
+  @include font-body-2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.module-delivery-issue-notification__first-line {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
   margin-left: auto;
   margin-right: auto;
 
+  @include light-theme {
+    color: $color-gray-60;
+  }
+  @include dark-theme {
+    color: $color-gray-25;
+  }
+}
+.module-delivery-issue-notification__icon {
+  height: 14px;
+  width: 14px;
+  display: inline-block;
+  margin-right: 8px;
+
+  @include light-theme {
+    @include color-svg(
+      '../images/icons/v2/error-outline-12.svg',
+      $color-gray-60
+    );
+  }
+  @include dark-theme {
+    @include color-svg(
+      '../images/icons/v2/error-outline-12.svg',
+      $color-gray-25
+    );
+  }
+}
+.module-delivery-issue-notification__button {
+  @include button-reset;
+  @include button-light-blue-text;
+  @include button-small;
+
+  @include font-body-2;
+  padding: 5px 12px;
+}
+
+// Module: Chat Session Refreshed Dialog
+
+.module-chat-session-refreshed-dialog {
   @include light-theme {
     background-color: $color-white;
   }
@@ -10663,6 +10407,7 @@ $contact-modal-padding: 18px;
 .module-chat-session-refreshed-dialog__buttons {
   text-align: right;
   margin-top: 20px;
+  padding: 3px;
 }
 .module-chat-session-refreshed-dialog__button {
   @include font-body-1-bold;
@@ -10675,6 +10420,42 @@ $contact-modal-padding: 18px;
 }
 .module-chat-session-refreshed-dialog__button--secondary {
   @include button-secondary;
+}
+
+// Module: Delivery Issue Dialog
+
+.module-delivery-issue-dialog {
+  // margin-left: auto;
+  // margin-right: auto;
+
+  @include light-theme {
+    background-color: $color-white;
+  }
+  @include dark-theme {
+    background-color: $color-gray-95;
+  }
+}
+.module-delivery-issue-dialog__image {
+  text-align: center;
+}
+.module-delivery-issue-dialog__title {
+  @include font-body-1-bold;
+  margin-top: 10px;
+  margin-bottom: 3px;
+}
+.module-delivery-issue-dialog__buttons {
+  text-align: right;
+  margin-top: 20px;
+  padding: 3px;
+}
+.module-delivery-issue-dialog__button {
+  @include font-body-1-bold;
+  @include button-reset;
+  @include button-primary;
+
+  border-radius: 4px;
+  padding: 7px 14px;
+  margin-left: 12px;
 }
 
 /* Third-party module: react-contextmenu*/

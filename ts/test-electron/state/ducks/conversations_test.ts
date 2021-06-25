@@ -23,6 +23,7 @@ import {
   reducer,
   updateConversationLookups,
 } from '../../../state/ducks/conversations';
+import { ContactSpoofingType } from '../../../util/contactSpoofing';
 import { CallMode } from '../../../types/Calling';
 import * as groups from '../../../groups';
 import { getDefaultConversation } from '../../../test-both/helpers/getDefaultConversation';
@@ -49,6 +50,8 @@ const {
   startComposing,
   showChooseGroupMembers,
   startSettingGroupMetadata,
+  resetAllChatColors,
+  reviewGroupMemberNameCollision,
   reviewMessageRequestNameCollision,
   toggleConversationInChooseMembers,
 } = actions;
@@ -289,6 +292,7 @@ describe('both/state/ducks/conversations', () => {
 
   describe('reducer', () => {
     const time = Date.now();
+    const previousTime = time - 1;
     const conversationId = 'conversation-guid-1';
     const messageId = 'message-guid-1';
     const messageIdTwo = 'message-guid-2';
@@ -296,14 +300,15 @@ describe('both/state/ducks/conversations', () => {
 
     function getDefaultMessage(id: string): MessageType {
       return {
-        id,
+        attachments: [],
         conversationId: 'conversationId',
+        id,
+        received_at: previousTime,
+        sent_at: previousTime,
         source: 'source',
         sourceUuid: 'sourceUuid',
+        timestamp: previousTime,
         type: 'incoming' as const,
-        received_at: Date.now(),
-        attachments: [],
-        sticker: {},
         unread: false,
       };
     }
@@ -535,6 +540,7 @@ describe('both/state/ducks/conversations', () => {
         const state = {
           ...getEmptyState(),
           contactSpoofingReview: {
+            type: ContactSpoofingType.DirectConversationWithSameTitle as const,
             safeConversationId: 'abc123',
           },
         };
@@ -949,6 +955,7 @@ describe('both/state/ducks/conversations', () => {
             [messageId]: {
               ...getDefaultMessage(messageId),
               received_at: time,
+              sent_at: time,
             },
           },
           messagesByConversation: {
@@ -968,6 +975,7 @@ describe('both/state/ducks/conversations', () => {
             [messageId]: {
               ...getDefaultMessage(messageId),
               received_at: time,
+              sent_at: time,
             },
           },
           messagesByConversation: {
@@ -979,6 +987,7 @@ describe('both/state/ducks/conversations', () => {
                 newest: {
                   id: messageId,
                   received_at: time,
+                  sent_at: time,
                 },
               },
             },
@@ -1056,6 +1065,7 @@ describe('both/state/ducks/conversations', () => {
             [messageId]: {
               ...getDefaultMessage(messageId),
               received_at: time,
+              sent_at: time,
             },
           },
           messagesByConversation: {
@@ -1075,6 +1085,7 @@ describe('both/state/ducks/conversations', () => {
             [messageId]: {
               ...getDefaultMessage(messageId),
               received_at: time,
+              sent_at: time,
             },
           },
           messagesByConversation: {
@@ -1086,6 +1097,7 @@ describe('both/state/ducks/conversations', () => {
                 oldest: {
                   id: messageId,
                   received_at: time,
+                  sent_at: time,
                 },
               },
             },
@@ -1154,6 +1166,19 @@ describe('both/state/ducks/conversations', () => {
       });
     });
 
+    describe('REVIEW_GROUP_MEMBER_NAME_COLLISION', () => {
+      it('starts reviewing a group member name collision', () => {
+        const state = getEmptyState();
+        const action = reviewGroupMemberNameCollision('abc123');
+        const actual = reducer(state, action);
+
+        assert.deepEqual(actual.contactSpoofingReview, {
+          type: ContactSpoofingType.MultipleGroupMembersWithSameTitle as const,
+          groupConversationId: 'abc123',
+        });
+      });
+    });
+
     describe('REVIEW_MESSAGE_REQUEST_NAME_COLLISION', () => {
       it('starts reviewing a message request name collision', () => {
         const state = getEmptyState();
@@ -1163,6 +1188,7 @@ describe('both/state/ducks/conversations', () => {
         const actual = reducer(state, action);
 
         assert.deepEqual(actual.contactSpoofingReview, {
+          type: ContactSpoofingType.DirectConversationWithSameTitle as const,
           safeConversationId: 'def',
         });
       });
@@ -1975,6 +2001,97 @@ describe('both/state/ducks/conversations', () => {
 
         assert.strictEqual(action.payload.maxGroupSize, 1235);
       });
+    });
+  });
+
+  describe('COLORS_CHANGED', () => {
+    const abc = getDefaultConversation({
+      id: 'abc',
+      uuid: 'abc',
+      conversationColor: 'wintergreen',
+    });
+    const def = getDefaultConversation({
+      id: 'def',
+      uuid: 'def',
+      conversationColor: 'infrared',
+    });
+    const ghi = getDefaultConversation({
+      id: 'ghi',
+      e164: 'ghi',
+      conversationColor: 'ember',
+    });
+    const jkl = getDefaultConversation({
+      id: 'jkl',
+      groupId: 'jkl',
+      conversationColor: 'plum',
+    });
+    const getState = () => ({
+      ...getEmptyRootState(),
+      conversations: {
+        ...getEmptyState(),
+        conversationLookup: {
+          abc,
+          def,
+          ghi,
+          jkl,
+        },
+        conversationsByUuid: {
+          abc,
+          def,
+        },
+        conversationsByE164: {
+          ghi,
+        },
+        conversationsByGroupId: {
+          jkl,
+        },
+      },
+    });
+
+    it('resetAllChatColors', async () => {
+      window.storage.put('defaultConversationColor', {
+        color: 'crimson',
+      });
+      const dispatch = sinon.spy();
+      await resetAllChatColors()(dispatch, getState, null);
+
+      const [action] = dispatch.getCall(0).args;
+      const nextState = reducer(getState().conversations, action);
+
+      sinon.assert.calledOnce(dispatch);
+      assert.equal(
+        nextState.conversationLookup.abc.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationLookup.def.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationLookup.ghi.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationLookup.jkl.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationsByUuid.abc.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationsByUuid.def.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationsByE164.ghi.conversationColor,
+        'crimson'
+      );
+      assert.equal(
+        nextState.conversationsByGroupId.jkl.conversationColor,
+        'crimson'
+      );
+      window.storage.remove('defaultConversationColor');
     });
   });
 });

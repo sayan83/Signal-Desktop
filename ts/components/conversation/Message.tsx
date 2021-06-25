@@ -8,7 +8,11 @@ import { drop, groupBy, orderBy, take } from 'lodash';
 import { ContextMenu, ContextMenuTrigger, MenuItem } from 'react-contextmenu';
 import { Manager, Popper, Reference } from 'react-popper';
 
-import { ConversationType } from '../../state/ducks/conversations';
+import {
+  ConversationType,
+  ConversationTypeType,
+  InteractionModeType,
+} from '../../state/ducks/conversations';
 import { Avatar } from '../Avatar';
 import { Spinner } from '../Spinner';
 import { MessageBody } from './MessageBody';
@@ -50,10 +54,15 @@ import { ContactType } from '../../types/Contact';
 import { getIncrement } from '../../util/timer';
 import { isFileDangerous } from '../../util/isFileDangerous';
 import { BodyRangesType, LocalizerType, ThemeType } from '../../types/Util';
-import { ColorType } from '../../types/Colors';
+import {
+  ContactNameColorType,
+  ConversationColorType,
+  CustomColorType,
+} from '../../types/Colors';
 import { createRefMerger } from '../_util';
 import { emojiToData } from '../emoji/lib';
 import { SmartReactionPicker } from '../../state/smart/ReactionPicker';
+import { getCustomColorStyle } from '../../util/getCustomColorStyle';
 
 type Trigger = {
   handleContextClick: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -75,14 +84,8 @@ export const MessageStatuses = [
 ] as const;
 export type MessageStatusType = typeof MessageStatuses[number];
 
-export const InteractionModes = ['mouse', 'keyboard'] as const;
-export type InteractionModeType = typeof InteractionModes[number];
-
 export const Directions = ['incoming', 'outgoing'] as const;
 export type DirectionType = typeof Directions[number];
-
-export const ConversationTypes = ['direct', 'group'] as const;
-export type ConversationTypesType = typeof ConversationTypes[number];
 
 export type AudioAttachmentProps = {
   id: string;
@@ -100,6 +103,9 @@ export type AudioAttachmentProps = {
 
 export type PropsData = {
   id: string;
+  contactNameColor?: ContactNameColorType;
+  conversationColor: ConversationColorType;
+  customColor?: CustomColorType;
   conversationId: string;
   text?: string;
   textPending?: boolean;
@@ -125,9 +131,11 @@ export type PropsData = {
     | 'unblurredAvatarPath'
   >;
   reducedMotion?: boolean;
-  conversationType: ConversationTypesType;
+  conversationType: ConversationTypeType;
   attachments?: Array<AttachmentType>;
   quote?: {
+    conversationColor: ConversationColorType;
+    customColor?: CustomColorType;
     text: string;
     rawAttachment?: QuotedAttachmentType;
     isFromMe: boolean;
@@ -137,12 +145,11 @@ export type PropsData = {
     authorProfileName?: string;
     authorTitle: string;
     authorName?: string;
-    authorColor?: ColorType;
     bodyRanges?: BodyRangesType;
     referencedMessageNotFound: boolean;
+    isViewOnce: boolean;
   };
   previews: Array<LinkPreviewType>;
-  isExpired?: boolean;
 
   isTapToView?: boolean;
   isTapToViewExpired?: boolean;
@@ -176,6 +183,9 @@ export type PropsHousekeeping = {
 
 export type PropsActions = {
   clearSelectedMessage: () => unknown;
+  doubleCheckMissingQuoteReference: (messageId: string) => unknown;
+  onHeightChange: () => unknown;
+  checkForAccount: (identifier: string) => unknown;
 
   reactToMessage: (
     id: string,
@@ -341,6 +351,17 @@ export class Message extends React.Component<Props, State> {
     }
   };
 
+  public showContextMenu = (event: React.MouseEvent<HTMLDivElement>): void => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      return;
+    }
+    if (event.target instanceof HTMLAnchorElement) {
+      return;
+    }
+    this.showMenu(event);
+  };
+
   public handleImageError = (): void => {
     const { id } = this.props;
     window.log.info(
@@ -385,18 +406,21 @@ export class Message extends React.Component<Props, State> {
     }
 
     const { expirationLength } = this.props;
-    if (!expirationLength) {
-      return;
+    if (expirationLength) {
+      const increment = getIncrement(expirationLength);
+      const checkFrequency = Math.max(EXPIRATION_CHECK_MINIMUM, increment);
+
+      this.checkExpired();
+
+      this.expirationCheckInterval = setInterval(() => {
+        this.checkExpired();
+      }, checkFrequency);
     }
 
-    const increment = getIncrement(expirationLength);
-    const checkFrequency = Math.max(EXPIRATION_CHECK_MINIMUM, increment);
-
-    this.checkExpired();
-
-    this.expirationCheckInterval = setInterval(() => {
-      this.checkExpired();
-    }, checkFrequency);
+    const { contact, checkForAccount } = this.props;
+    if (contact && contact.firstNumber && !contact.isNumberOnSignal) {
+      checkForAccount(contact.firstNumber);
+    }
   }
 
   public componentWillUnmount(): void {
@@ -428,9 +452,28 @@ export class Message extends React.Component<Props, State> {
     }
 
     this.checkExpired();
+    this.checkForHeightChange(prevProps);
 
     if (canDeleteForEveryone !== prevProps.canDeleteForEveryone) {
       this.startDeleteForEveryoneTimer();
+    }
+  }
+
+  public checkForHeightChange(prevProps: Props): void {
+    const { contact, onHeightChange } = this.props;
+    const willRenderSendMessageButton = Boolean(
+      contact && contact.firstNumber && contact.isNumberOnSignal
+    );
+
+    const { contact: previousContact } = prevProps;
+    const previouslyRenderedSendMessageButton = Boolean(
+      previousContact &&
+        previousContact.firstNumber &&
+        previousContact.isNumberOnSignal
+    );
+
+    if (willRenderSendMessageButton !== previouslyRenderedSendMessageButton) {
+      onHeightChange();
     }
   }
 
@@ -476,7 +519,7 @@ export class Message extends React.Component<Props, State> {
 
   public checkExpired(): void {
     const now = Date.now();
-    const { isExpired, expirationTimestamp, expirationLength } = this.props;
+    const { expirationTimestamp, expirationLength } = this.props;
 
     if (!expirationTimestamp || !expirationLength) {
       return;
@@ -485,7 +528,7 @@ export class Message extends React.Component<Props, State> {
       return;
     }
 
-    if (isExpired || now >= expirationTimestamp) {
+    if (now >= expirationTimestamp) {
       this.setState({
         expiring: true,
       });
@@ -656,6 +699,7 @@ export class Message extends React.Component<Props, State> {
     const {
       author,
       collapseMetadata,
+      contactNameColor,
       conversationType,
       direction,
       i18n,
@@ -687,6 +731,7 @@ export class Message extends React.Component<Props, State> {
     return (
       <div className={moduleName}>
         <ContactName
+          contactNameColor={contactNameColor}
           title={author.title}
           phoneNumber={author.phoneNumber}
           name={author.name}
@@ -942,7 +987,9 @@ export class Message extends React.Component<Props, State> {
           attachment: first.image,
           messageId: id,
         });
+        return;
       }
+      openLink(first.url);
     };
     const contents = (
       <>
@@ -1035,11 +1082,14 @@ export class Message extends React.Component<Props, State> {
 
   public renderQuote(): JSX.Element | null {
     const {
-      author,
+      conversationColor,
       conversationType,
+      customColor,
       direction,
       disableScroll,
+      doubleCheckMissingQuoteReference,
       i18n,
+      id,
       quote,
       scrollToQuotedMessage,
     } = this.props;
@@ -1050,9 +1100,7 @@ export class Message extends React.Component<Props, State> {
 
     const withContentAbove =
       conversationType === 'group' && direction === 'incoming';
-    const quoteColor =
-      direction === 'incoming' ? author.color : quote.authorColor;
-    const { referencedMessageNotFound } = quote;
+    const { isViewOnce, referencedMessageNotFound } = quote;
 
     const clickHandler = disableScroll
       ? undefined
@@ -1073,12 +1121,17 @@ export class Message extends React.Component<Props, State> {
         authorPhoneNumber={quote.authorPhoneNumber}
         authorProfileName={quote.authorProfileName}
         authorName={quote.authorName}
-        authorColor={quoteColor}
         authorTitle={quote.authorTitle}
         bodyRanges={quote.bodyRanges}
+        conversationColor={conversationColor}
+        customColor={customColor}
+        isViewOnce={isViewOnce}
         referencedMessageNotFound={referencedMessageNotFound}
         isFromMe={quote.isFromMe}
         withContentAbove={withContentAbove}
+        doubleCheckMissingQuoteReference={() =>
+          doubleCheckMissingQuoteReference(id)
+        }
       />
     );
   }
@@ -1102,7 +1155,9 @@ export class Message extends React.Component<Props, State> {
       conversationType === 'group' && direction === 'incoming';
     const withContentBelow = withCaption || !collapseMetadata;
 
-    const otherContent = (contact && contact.signalAccount) || withCaption;
+    const otherContent =
+      (contact && contact.firstNumber && contact.isNumberOnSignal) ||
+      withCaption;
     const tabIndex = otherContent ? 0 : -1;
 
     return (
@@ -1111,7 +1166,7 @@ export class Message extends React.Component<Props, State> {
         isIncoming={direction === 'incoming'}
         i18n={i18n}
         onClick={() => {
-          showContactDetail({ contact, signalAccount: contact.signalAccount });
+          showContactDetail({ contact, signalAccount: contact.firstNumber });
         }}
         withContentAbove={withContentAbove}
         withContentBelow={withContentBelow}
@@ -1122,18 +1177,18 @@ export class Message extends React.Component<Props, State> {
 
   public renderSendMessageButton(): JSX.Element | null {
     const { contact, openConversation, i18n } = this.props;
-    if (!contact || !contact.signalAccount) {
+    if (!contact) {
+      return null;
+    }
+    const { firstNumber, isNumberOnSignal } = contact;
+    if (!firstNumber || !isNumberOnSignal) {
       return null;
     }
 
     return (
       <button
         type="button"
-        onClick={() => {
-          if (contact.signalAccount) {
-            openConversation(contact.signalAccount);
-          }
-        }}
+        onClick={() => openConversation(firstNumber)}
         className="module-message__send-message-button"
       >
         {i18n('sendMessageToContact')}
@@ -2156,15 +2211,15 @@ export class Message extends React.Component<Props, State> {
       this.audioButtonRef.current.click();
     }
 
-    if (contact && contact.signalAccount) {
-      openConversation(contact.signalAccount);
+    if (contact && contact.firstNumber && contact.isNumberOnSignal) {
+      openConversation(contact.firstNumber);
 
       event.preventDefault();
       event.stopPropagation();
     }
 
     if (contact) {
-      showContactDetail({ contact, signalAccount: contact.signalAccount });
+      showContactDetail({ contact, signalAccount: contact.firstNumber });
 
       event.preventDefault();
       event.stopPropagation();
@@ -2250,7 +2305,8 @@ export class Message extends React.Component<Props, State> {
   public renderContainer(): JSX.Element {
     const {
       attachments,
-      author,
+      conversationColor,
+      customColor,
       deletedForEveryone,
       direction,
       isSticker,
@@ -2275,14 +2331,14 @@ export class Message extends React.Component<Props, State> {
       isTapToView && isTapToViewExpired
         ? 'module-message__container--with-tap-to-view-expired'
         : null,
-      !isSticker && direction === 'incoming'
-        ? `module-message__container--incoming-${author.color}`
+      !isSticker && direction === 'outgoing'
+        ? `module-message__container--outgoing-${conversationColor}`
         : null,
       isTapToView && isAttachmentPending && !isTapToViewExpired
         ? 'module-message__container--with-tap-to-view-pending'
         : null,
       isTapToView && isAttachmentPending && !isTapToViewExpired
-        ? `module-message__container--${direction}-${author.color}-tap-to-view-pending`
+        ? `module-message__container--${direction}-${conversationColor}-tap-to-view-pending`
         : null,
       isTapToViewError
         ? 'module-message__container--with-tap-to-view-error'
@@ -2295,10 +2351,17 @@ export class Message extends React.Component<Props, State> {
     const containerStyles = {
       width: isShowingImage ? width : undefined,
     };
+    if (!isSticker && direction === 'outgoing') {
+      Object.assign(containerStyles, getCustomColorStyle(customColor));
+    }
 
     return (
       <div className="module-message__container-outer">
-        <div className={containerClassnames} style={containerStyles}>
+        <div
+          className={containerClassnames}
+          style={containerStyles}
+          onContextMenu={this.showContextMenu}
+        >
           {this.renderAuthor()}
           {this.renderContents()}
         </div>

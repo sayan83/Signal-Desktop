@@ -12,13 +12,12 @@ import { assert } from '../util/assert';
 import { missingCaseError } from '../util/missingCaseError';
 import { waitForOnline } from '../util/waitForOnline';
 import * as log from '../logging/log';
+import { connectToServerWithStoredCredentials } from '../util/connectToServerWithStoredCredentials';
+import { StorageInterface } from '../types/Storage.d';
 
-// We define a stricter storage here that returns `unknown` instead of `any`.
-type Storage = {
-  get(key: string): unknown;
-  put(key: string, value: unknown): Promise<void>;
-  remove(key: string): Promise<void>;
-};
+function isWellFormed(data: unknown): data is SerializedCertificateType {
+  return serializedCertificateSchema.safeParse(data).success;
+}
 
 // In case your clock is different from the server's, we "fake" expire certificates early.
 const CLOCK_SKEW_THRESHOLD = 15 * 60 * 1000;
@@ -38,7 +37,7 @@ export class SenderCertificateService {
 
   private onlineEventTarget?: EventTarget;
 
-  private storage?: Storage;
+  private storage?: StorageInterface;
 
   initialize({
     SenderCertificate,
@@ -51,7 +50,7 @@ export class SenderCertificateService {
     navigator: Readonly<{ onLine: boolean }>;
     onlineEventTarget: EventTarget;
     SenderCertificate: typeof SenderCertificateClass;
-    storage: Storage;
+    storage: StorageInterface;
   }): void {
     log.info('Sender certificate service initialized');
 
@@ -88,10 +87,14 @@ export class SenderCertificateService {
     );
 
     const valueInStorage = storage.get(modeToStorageKey(mode));
-    return serializedCertificateSchema.check(valueInStorage) &&
+    if (
+      isWellFormed(valueInStorage) &&
       isExpirationValid(valueInStorage.expires)
-      ? valueInStorage
-      : undefined;
+    ) {
+      return valueInStorage;
+    }
+
+    return undefined;
   }
 
   private fetchCertificate(
@@ -192,20 +195,7 @@ export class SenderCertificateService {
       'Sender certificate service method was called before it was initialized'
     );
 
-    const username = storage.get('uuid_id') || storage.get('number_id');
-    const password = storage.get('password');
-    if (typeof username !== 'string') {
-      throw new Error(
-        'Sender certificate service: username in storage was not a string. Cannot connect'
-      );
-    }
-    if (typeof password !== 'string') {
-      throw new Error(
-        'Sender certificate service: password in storage was not a string. Cannot connect'
-      );
-    }
-
-    const server = WebAPI.connect({ username, password });
+    const server = connectToServerWithStoredCredentials(WebAPI, storage);
     const omitE164 = mode === SenderCertificateMode.WithoutE164;
     const { certificate } = await server.getSenderCertificate(omitE164);
     return certificate;

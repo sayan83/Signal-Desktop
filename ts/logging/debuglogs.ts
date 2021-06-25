@@ -1,7 +1,7 @@
 // Copyright 2018-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import * as z from 'zod';
+import { z } from 'zod';
 import FormData from 'form-data';
 import { gzip } from 'zlib';
 import pify from 'pify';
@@ -43,9 +43,11 @@ export const uploadDebugLogs = async (
   const signedForm = await got.get(BASE_URL, { json: true, headers });
   const { fields, url } = parseTokenBody(signedForm.body);
 
+  const uploadKey = `${fields.key}.gz`;
+
   const form = new FormData();
   // The API expects `key` to be the first field:
-  form.append('key', fields.key);
+  form.append('key', uploadKey);
   Object.entries(fields)
     .filter(([key]) => key !== 'key')
     .forEach(([key, value]) => {
@@ -76,5 +78,5 @@ export const uploadDebugLogs = async (
   }
   window.log.info('Debug log upload complete.');
 
-  return `${BASE_URL}/${fields.key}`;
+  return `${BASE_URL}/${uploadKey}`;
 };

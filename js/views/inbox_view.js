@@ -1,4 +1,4 @@
-// Copyright 2014-2020 Signal Messenger, LLC
+// Copyright 2014-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
 /* global
@@ -27,7 +27,6 @@
       if (id !== this.el.lastChild.id) {
         const view = new Whisper.ConversationView({
           model: conversation,
-          window: this.model.window,
         });
         this.listenTo(conversation, 'unload', () =>
           this.onUnload(conversation)
@@ -107,6 +106,30 @@
         this.conversation_stack.unload();
       });
 
+      window.Whisper.events.on('showConversation', async (id, messageId) => {
+        const conversation = await ConversationController.getOrCreateAndWait(
+          id,
+          'private'
+        );
+
+        conversation.setMarkedUnread(false);
+
+        const { openConversationExternal } = window.reduxActions.conversations;
+        if (openConversationExternal) {
+          openConversationExternal(conversation.id, messageId);
+        }
+
+        this.conversation_stack.open(conversation, messageId);
+        this.focusConversation();
+      });
+
+      window.Whisper.events.on('loadingProgress', count => {
+        const view = this.appLoadingScreen;
+        if (view) {
+          view.updateProgress(count);
+        }
+      });
+
       if (!options.initialLoadComplete) {
         this.appLoadingScreen = new Whisper.AppLoadingScreen();
         this.appLoadingScreen.render();
@@ -114,7 +137,6 @@
         this.startConnectionListener();
       } else {
         this.setupLeftPane();
-        this.setupCallManagerUI();
       }
 
       Whisper.events.on('pack-install-failed', () => {
@@ -131,16 +153,6 @@
     events: {
       click: 'onClick',
     },
-    setupCallManagerUI() {
-      if (this.callManagerView) {
-        return;
-      }
-      this.callManagerView = new Whisper.ReactWrapperView({
-        className: 'call-manager-wrapper',
-        JSX: Signal.State.Roots.createCallManager(window.reduxStore),
-      });
-      this.$('.call-manager-placeholder').append(this.callManagerView.el);
-    },
     setupLeftPane() {
       if (this.leftPaneView) {
         return;
@@ -156,15 +168,15 @@
       this.interval = setInterval(() => {
         const status = window.getSocketStatus();
         switch (status) {
-          case WebSocket.CONNECTING:
+          case 'CONNECTING':
             break;
-          case WebSocket.OPEN:
+          case 'OPEN':
             clearInterval(this.interval);
             // if we've connected, we can wait for real empty event
             this.interval = null;
             break;
-          case WebSocket.CLOSING:
-          case WebSocket.CLOSED:
+          case 'CLOSING':
+          case 'CLOSED':
             clearInterval(this.interval);
             this.interval = null;
             // if we failed to connect, we pretend we got an empty event
@@ -172,7 +184,7 @@
             break;
           default:
             window.log.warn(
-              'startConnectionListener: Found unexpected socket status; calling onEmpty() manually.'
+              `startConnectionListener: Found unexpected socket status ${status}; calling onEmpty() manually.`
             );
             this.onEmpty();
             break;
@@ -181,7 +193,6 @@
     },
     onEmpty() {
       this.setupLeftPane();
-      this.setupCallManagerUI();
 
       const view = this.appLoadingScreen;
       if (view) {
@@ -196,12 +207,6 @@
         }
       }
     },
-    onProgress(count) {
-      const view = this.appLoadingScreen;
-      if (view) {
-        view.updateProgress(count);
-      }
-    },
     focusConversation(e) {
       if (e && this.$(e.target).closest('.placeholder').length) {
         return;
@@ -209,30 +214,6 @@
 
       this.$('#header, .gutter').addClass('inactive');
       this.$('.conversation-stack').removeClass('inactive');
-    },
-    focusHeader() {
-      this.$('.conversation-stack').addClass('inactive');
-      this.$('#header, .gutter').removeClass('inactive');
-      this.$('.conversation:first .menu').trigger('close');
-    },
-    reloadBackgroundPage() {
-      window.location.reload();
-    },
-    async openConversation(id, messageId) {
-      const conversation = await ConversationController.getOrCreateAndWait(
-        id,
-        'private'
-      );
-
-      conversation.setMarkedUnread(false);
-
-      const { openConversationExternal } = window.reduxActions.conversations;
-      if (openConversationExternal) {
-        openConversationExternal(conversation.id, messageId);
-      }
-
-      this.conversation_stack.open(conversation, messageId);
-      this.focusConversation();
     },
     closeRecording(e) {
       if (e && this.$(e.target).closest('.capture-audio').length > 0) {

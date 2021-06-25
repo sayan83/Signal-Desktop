@@ -7,6 +7,8 @@ import * as sinon from 'sinon';
 import {
   concat,
   filter,
+  find,
+  groupBy,
   isIterable,
   map,
   size,
@@ -207,6 +209,54 @@ describe('iterable utilities', () => {
       const result: Iterable<string> = filter(input, isString);
 
       assert.deepEqual([...result], ['two', 'four']);
+    });
+  });
+
+  describe('find', () => {
+    const isOdd = (n: number) => Boolean(n % 2);
+
+    it('returns undefined if the value is not found', () => {
+      assert.isUndefined(find([], isOdd));
+      assert.isUndefined(find([2, 4], isOdd));
+    });
+
+    it('returns the first matching value', () => {
+      assert.strictEqual(find([0, 1, 2, 3], isOdd), 1);
+    });
+
+    it('only iterates until a value is found', () => {
+      function* numbers() {
+        yield 2;
+        yield 3;
+        throw new Error('this should never happen');
+      }
+
+      find(numbers(), isOdd);
+    });
+  });
+
+  describe('groupBy', () => {
+    it('returns an empty object if passed an empty iterable', () => {
+      const fn = sinon.fake();
+
+      assert.deepEqual(groupBy([], fn), {});
+      assert.deepEqual(groupBy(new Set(), fn), {});
+
+      sinon.assert.notCalled(fn);
+    });
+
+    it('returns a map of groups', () => {
+      assert.deepEqual(
+        groupBy(
+          ['apple', 'aardvark', 'orange', 'orange', 'zebra'],
+          str => str[0]
+        ),
+        {
+          a: ['apple', 'aardvark'],
+          o: ['orange', 'orange'],
+          z: ['zebra'],
+        }
+      );
     });
   });
 

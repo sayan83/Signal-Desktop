@@ -175,6 +175,10 @@
         "message": "Arşivi Görüntüle",
         "description": "One of the menu options available in the Avatar Popup menu"
     },
+    "avatarMenuChatColors": {
+        "message": "Konuşma Rengi",
+        "description": "One of the menu options available in the Avatar Popup menu"
+    },
     "loading": {
         "message": "Yükleniyor...",
         "description": "Message shown on the loading screen before we've loaded any messages"
@@ -701,6 +705,10 @@
         "message": "Signal Desktop Hakkında",
         "description": "Item under the Help menu, which opens a small about window"
     },
+    "screenShareWindow": {
+        "message": "Ekran paylaşımı",
+        "description": "Title for screen sharing window"
+    },
     "speech": {
         "message": "Konuşma",
         "description": "Item under the Edit menu, with 'start/stop speaking' items below it"
@@ -748,6 +756,10 @@
                 "example": "dog"
             }
         }
+    },
+    "noSearchResults--sms-only": {
+        "message": "SMS/MMS kişileri Desktop'ta mevcut değil.",
+        "description": "Shown in the search left pane when no results were found and primary device has SMS/MMS handling enabled"
     },
     "noSearchResultsInConversation": {
         "message": "$conversationName$ konuşması \"$searchTerm$\" için sonuç bulunamadı",
@@ -1131,6 +1143,38 @@
         "message": "Destekle İletişime Geçin",
         "description": "Shown on explainer dialog available from chat session refreshed timeline events"
     },
+    "DeliveryIssue--preview": {
+        "message": "Teslim sıkıntısı",
+        "description": "Shown in left pane preview when message delivery issue happens"
+    },
+    "DeliveryIssue--notification": {
+        "message": "$sender$ tarafından gönderilen bir ileti teslim edilemedi",
+        "description": "Shown in timeline when message delivery issue happens",
+        "placeholders": {
+            "name": {
+                "content": "$1",
+                "example": "Alice"
+            }
+        }
+    },
+    "DeliveryIssue--learnMore": {
+        "message": "Dahasını Öğrenin",
+        "description": "Shown in timeline when message delivery issue happens, to provide access to a popup info dialog"
+    },
+    "DeliveryIssue--title": {
+        "message": "Teslim Sıkıntısı",
+        "description": "Shown on explainer dialog available from delivery issue timeline events"
+    },
+    "DeliveryIssue--summary": {
+        "message": "$sender$ tarafından gönderilen bir ileti, çıkartma, tepki, okundu bilgisi veya medya size teslim edilemedi. Size doğrudan veya grup içerisinden göndermeye çalışmış olabilirler.",
+        "description": "Shown on explainer dialog available from delivery issue timeline events",
+        "placeholders": {
+            "name": {
+                "content": "$1",
+                "example": "Alice"
+            }
+        }
+    },
     "quoteThumbnailAlt": {
         "message": "Alıntılanmış iletideki görüntünün önizlemesi",
         "description": "Used in alt tag of thumbnail images inside of an embedded message quote"
@@ -1275,6 +1319,18 @@
         "message": "Mikrofonu aç",
         "description": "Button tooltip label for turning on the microphone"
     },
+    "calling__button--presenting-disabled": {
+        "message": "Sunum yapma devre dışı",
+        "description": "Button tooltip label for when screen sharing is disabled"
+    },
+    "calling__button--presenting-on": {
+        "message": "Sunmaya başla",
+        "description": "Button tooltip label for starting to share screen"
+    },
+    "calling__button--presenting-off": {
+        "message": "Sunmayı durdur",
+        "description": "Button tooltip label for stopping screen sharing"
+    },
     "calling__your-video-is-off": {
         "message": "Kameranız kapalı",
         "description": "Label in the calling lobby indicating that your camera is off"
@@ -1387,6 +1443,80 @@
         "message": "Aşağı kaydır",
         "description": "Label for the \"scroll down\" button in a call's overflow area"
     },
+    "calling__presenting--notification-title": {
+        "message": "Herkese sunuyorsunuz",
+        "description": "Title for the share screen notification"
+    },
+    "calling__presenting--notification-body": {
+        "message": "Sunumu durdurmaya hazır olduğunuzda aramaya dönmek için buraya tıklayın.",
+        "description": "Body text for the share screen notification"
+    },
+    "calling__presenting--info": {
+        "message": "Signal $window$ penceresini paylaşıyor.",
+        "description": "Text that appears in the screen sharing controller to inform person that they are presenting",
+        "placeholders": {
+            "name": {
+                "content": "$1",
+                "example": "Application"
+            }
+        }
+    },
+    "calling__presenting--stop": {
+        "message": "Paylaşmayı durdur",
+        "description": "Button for stopping screen sharing"
+    },
+    "calling__presenting--you-stopped": {
+        "message": "Sunmayı durdurdunuz",
+        "description": "Toast that appears when someone stops presenting"
+    },
+    "calling__presenting--person-ongoing": {
+        "message": "$name$ sunuyor",
+        "description": "Title of call when someone is presenting",
+        "placeholders": {
+            "name": {
+                "content": "$1",
+                "example": "Maddie"
+            }
+        }
+    },
+    "calling__presenting--person-stopped": {
+        "message": "$name$ sunmayı durdurdu",
+        "description": "Toast that appears when someone stops presenting",
+        "placeholders": {
+            "name": {
+                "content": "$1",
+                "example": "Maddie"
+            }
+        }
+    },
+    "calling__presenting--permission-title": {
+        "message": "İzin gerekiyor",
+        "description": "Shown as the title for the modal that requests screen recording permissions"
+    },
+    "calling__presenting--macos-permission-description": {
+        "message": "Signal'in bilgisayarınızın ekran kaydına ulaşmak için izne ihtiyacı var.",
+        "description": "Shown as the description for the modal that requests screen recording permissions"
+    },
+    "calling__presenting--permission-instruction-step1": {
+        "message": "Sistem Özelliklerine gidin.",
+        "description": "Shown as the description for the modal that requests screen recording permissions"
+    },
+    "calling__presenting--permission-instruction-step2": {
+        "message": "Sol alttaki kilit simgesine tıklayın ve bilgisayarınızın parolasını girin.",
+        "description": "Shown as the description for the modal that requests screen recording permissions"
+    },
+    "calling__presenting--permission-instruction-step3": {
+        "message": "Sağ tarafta, Signal'in yanındaki kutuyu seçin. Eğer listede Signal'i göremiyorsanız + düğmesine tıklayarak onu ekleyin. ",
+        "description": "Shown as the description for the modal that requests screen recording permissions"
+    },
+    "calling__presenting--permission-open": {
+        "message": "Sistem Özelliklerini Aç",
+        "description": "The button that opens your system preferences for the needs screen record permissions modal"
+    },
+    "calling__presenting--permission-cancel": {
+        "message": "Kapat",
+        "description": "The cancel button for the needs screen record permissions modal"
+    },
     "alwaysRelayCallsDescription": {
         "message": "Aramaları her zaman aktar",
         "description": "Description of the always relay calls setting"
@@ -1412,8 +1542,8 @@
         "description": "Header for general options on the settings screen"
     },
     "spellCheckDescription": {
-        "message": "İleti kutusuna girilen sözcüklerin denetlenmesini etkinleştir",
-        "description": "Description of the media permission description"
+        "message": "Yazım denetimini etkinleştir",
+        "description": "Description of the spell check setting"
     },
     "spellCheckWillBeEnabled": {
         "message": "Yazım denetimi bir sonraki Signal başlangıcında etkin olacaktır.",
@@ -1422,6 +1552,10 @@
     "spellCheckWillBeDisabled": {
         "message": "Yazım denetimi bir sonraki Signal başlangıcında devre dışı olacaktır.",
         "description": "Shown when the user disables spellcheck to indicate that they must restart Signal."
+    },
+    "autoLaunchDescription": {
+        "message": "Bilgisayar oturum açıldığında başlat",
+        "description": "Description for the automatic launch setting"
     },
     "clearDataHeader": {
         "message": "Verileri Temizle",
@@ -1536,6 +1670,10 @@
     "sendFailed": {
         "message": "Gönderme başarısız",
         "description": "Shown on outgoing message if it fails to send"
+    },
+    "sendPaused": {
+        "message": "Gönderim duraklatıldı",
+        "description": "Shown on outgoing message if it cannot be sent immediately"
     },
     "partiallySent": {
         "message": "Kısmen gönderildi, ayrıntılar için tıklayın",
@@ -1689,105 +1827,13 @@
             }
         }
     },
-    "timerOption_0_seconds": {
-        "message": "kapalı",
+    "disappearingMessages__off": {
+        "message": "Kapalı",
         "description": "Label for option to turn off message expiration in the timer menu"
-    },
-    "timerOption_5_seconds": {
-        "message": "5 saniye",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_10_seconds": {
-        "message": "10 saniye",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_30_seconds": {
-        "message": "30 saniye",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_1_minute": {
-        "message": "1 dakika",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_5_minutes": {
-        "message": "5 dakika",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_30_minutes": {
-        "message": "30 dakika",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_1_hour": {
-        "message": "1 saat",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_6_hours": {
-        "message": "6 saat",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_12_hours": {
-        "message": "12 saat",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_1_day": {
-        "message": "1 gün",
-        "description": "Label for a selectable option in the message expiration timer menu"
-    },
-    "timerOption_1_week": {
-        "message": "1 hafta",
-        "description": "Label for a selectable option in the message expiration timer menu"
     },
     "disappearingMessages": {
         "message": "Kaybolan iletiler",
-        "description": "Conversation menu option to enable disappearing messages"
-    },
-    "timerOption_0_seconds_abbreviated": {
-        "message": "kapalı",
-        "description": "Short format indicating current timer setting in the conversation list snippet"
-    },
-    "timerOption_5_seconds_abbreviated": {
-        "message": "5sn",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_10_seconds_abbreviated": {
-        "message": "10sn",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_30_seconds_abbreviated": {
-        "message": "30sn",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_1_minute_abbreviated": {
-        "message": "1dk",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_5_minutes_abbreviated": {
-        "message": "5dk",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_30_minutes_abbreviated": {
-        "message": "30dk",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_1_hour_abbreviated": {
-        "message": "1s",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_6_hours_abbreviated": {
-        "message": "6s",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_12_hours_abbreviated": {
-        "message": "12s",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_1_day_abbreviated": {
-        "message": "1g",
-        "description": "Very short format indicating current timer setting in the conversation header"
-    },
-    "timerOption_1_week_abbreviated": {
-        "message": "1h",
-        "description": "Very short format indicating current timer setting in the conversation header"
+        "description": "Conversation menu option to enable disappearing messages. Title of the settings section for Disappearing Messages"
     },
     "disappearingMessagesDisabled": {
         "message": "Kaybolan iletiler devre dışı",
@@ -2023,6 +2069,10 @@
         "message": "Grup adı (gereklidir)",
         "description": "The placeholder for the group name placeholder"
     },
+    "setGroupMetadata__group-description-placeholder": {
+        "message": "Açıklama",
+        "description": "The placeholder for the group description"
+    },
     "setGroupMetadata__create-group": {
         "message": "Oluştur",
         "description": "The 'create group' button text in the 'set group metadata' left pane screen"
@@ -2036,7 +2086,7 @@
         "description": "Shown in the modal when we can't create a group"
     },
     "updateGroupAttributes__title": {
-        "message": "Grup adını ve resmini düzenleyin",
+        "message": "Grubu düzenle",
         "description": "Shown in the modal when we want to update a group"
     },
     "updateGroupAttributes__error-message": {
@@ -2215,15 +2265,15 @@
     },
     "message--getDescription--disappearing-media": {
         "message": "Tek görümlük İçerik",
-        "description": "Shown in notifications and in the left pane after view-once message is deleted."
+        "description": "Shown in notifications and in the left pane after view-once message is deleted. Also shown when quoting a view once media."
     },
     "message--getDescription--disappearing-photo": {
         "message": "Tek görümlük Fotoğraf",
-        "description": "Shown in notifications and in the left pane when a message is a view once photo."
+        "description": "Shown in notifications and in the left pane when a message is a view once photo. Also shown when quoting a view once photo."
     },
     "message--getDescription--disappearing-video": {
         "message": "Tek görümlük Video",
-        "description": "Shown in notifications and in the left pane when a message is a view once video."
+        "description": "Shown in notifications and in the left pane when a message is a view once video. Also shown when quoting a view once video."
     },
     "message--deletedForEveryone": {
         "message": "Bu ileti silindi.",
@@ -2985,9 +3035,13 @@
             }
         }
     },
-    "MessageRequests--block-and-delete": {
-        "message": "Engelle ve Sil",
-        "description": "Shown as a button to let the user block and delete a message request"
+    "MessageRequests--block-and-report-spam": {
+        "message": "İstenmeyen olarak bildir ve Engelle",
+        "description": "Shown as a button to let the user block a message request and report spam"
+    },
+    "MessageRequests--block-and-report-spam-success-toast": {
+        "message": "Gereksiz olarak bildirildi ve engellendi",
+        "description": "Shown in a toast when you successfully block a user and report them as spam"
     },
     "MessageRequests--block-direct-confirm-title": {
         "message": "$name$ engellensin mi?",
@@ -3107,21 +3161,69 @@
             }
         }
     },
-    "ConversationHero--membership-1": {
-        "message": "$group$ grubuna üye.",
-        "description": "Shown in the conversation hero to indicate this user is a member of a mutual group"
+    "member-of-1-group": {
+        "message": "$group$ grubuna üye",
+        "description": "Shown in the conversation hero to indicate this user is a member of a mutual group",
+        "placeholders": {
+            "group": {
+                "content": "$1",
+                "example": "NYC Rock Climbers"
+            }
+        }
     },
-    "ConversationHero--membership-2": {
-        "message": "$group1$ ve $group2$ gruplarına üye.",
-        "description": "Shown in the conversation hero to indicate this user is a member of at least two mutual groups"
+    "member-of-2-groups": {
+        "message": "$group1$ ve $group2$ grubuna üye",
+        "description": "Shown in the conversation hero to indicate this user is a member of at least two mutual groups",
+        "placeholders": {
+            "group1": {
+                "content": "$1",
+                "example": "NYC Rock Climbers"
+            },
+            "group2": {
+                "content": "$2",
+                "example": "Dinner Party"
+            }
+        }
     },
-    "ConversationHero--membership-3": {
-        "message": "$group1$, $group2$ ve $group3$ gruplarına üye.",
-        "description": "Shown in the conversation hero to indicate this user is a member of at least three mutual groups"
+    "member-of-3-groups": {
+        "message": "$group1$, $group2$ ve $group3$ grubuna üye",
+        "description": "Shown in the conversation hero to indicate this user is a member of at least three mutual groups",
+        "placeholders": {
+            "group1": {
+                "content": "$1",
+                "example": "NYC Rock Climbers"
+            },
+            "group2": {
+                "content": "$2",
+                "example": "Dinner Party"
+            },
+            "group3": {
+                "content": "$3",
+                "example": "Friends 🌿"
+            }
+        }
     },
-    "ConversationHero--membership-extra": {
-        "message": "$group1$, $group2$, $group3$ ve $remainingCount$ diğer gruba üye.",
-        "description": "Shown in the conversation hero to indicate this user is a member of at least three mutual groups"
+    "member-of-more-than-3-groups": {
+        "message": "$group1$, $group2$, $group3$ ve $remainingCount$ diğer gruba üye",
+        "description": "Shown in the conversation hero to indicate this user is a member of at least three mutual groups",
+        "placeholders": {
+            "group1": {
+                "content": "$1",
+                "example": "NYC Rock Climbers"
+            },
+            "group2": {
+                "content": "$2",
+                "example": "Dinner Party"
+            },
+            "group3": {
+                "content": "$3",
+                "example": "Friends 🌿"
+            },
+            "remainingCount": {
+                "content": "$4",
+                "example": "3"
+            }
+        }
     },
     "ConversationHero--membership-added": {
         "message": "$name$ sizi gruba ekledi.",
@@ -3134,8 +3236,12 @@
         }
     },
     "no-groups-in-common": {
-        "message": "Ortak grup yok.",
+        "message": "Ortak grubunuz yok",
         "description": "Shown to indicate this user is not a member of any groups"
+    },
+    "no-groups-in-common-warning": {
+        "message": "Ortak bir grup yok. İstekleri dikkatlice gözden geçirin.",
+        "description": "When a user has no common groups, show this warning"
     },
     "acceptCall": {
         "message": "Yanıtla",
@@ -3311,6 +3417,32 @@
         "message": "Aramadan ayrıl",
         "description": "Title for hang up button"
     },
+    "calling__SelectPresentingSourcesModal--title": {
+        "message": "Ekran paylaş",
+        "description": "Title for the select your screen sharing sources modal"
+    },
+    "calling__SelectPresentingSourcesModal--confirm": {
+        "message": "Ekran paylaş",
+        "description": "Confirm button for sharing screen modal"
+    },
+    "calling__SelectPresentingSourcesModal--entireScreen": {
+        "message": "Tüm ekran",
+        "description": "Title for the select your screen sharing sources modal and 'Entire Screen' source"
+    },
+    "calling__SelectPresentingSourcesModal--screen": {
+        "message": "$id$ Ekranı",
+        "description": "Title for `Screen #N` source in screen sharing sources modal and overlay",
+        "placeholders": {
+            "id": {
+                "content": "$1",
+                "example": "1"
+            }
+        }
+    },
+    "calling__SelectPresentingSourcesModal--window": {
+        "message": "Bir pencere",
+        "description": "Title for the select your screen sharing sources modal"
+    },
     "callingDeviceSelection__label--video": {
         "message": "Video",
         "description": "Label for video input selector"
@@ -3340,7 +3472,7 @@
         "description": "Label for muting the conversation"
     },
     "muteEightHours": {
-        "message": "8 saatliğine sustur",
+        "message": "8 saatliğine sessize al",
         "description": "Label for muting the conversation"
     },
     "muteDay": {
@@ -3352,7 +3484,7 @@
         "description": "Label for muting the conversation"
     },
     "muteAlways": {
-        "message": "Kalıcı olarak sustur",
+        "message": "Kalıcı olarak sessize al",
         "description": "Label for muting the conversation"
     },
     "unmute": {
@@ -4529,6 +4661,42 @@
         "message": "Grup bağlantısı sıfırlandı.",
         "description": "Shown in timeline or conversation preview when v2 group changes"
     },
+    "GroupV2--description--remove--you": {
+        "message": "Grup açıklamasını kaldırdınız.",
+        "description": "Shown in timeline or conversation preview when v2 group changes"
+    },
+    "GroupV2--description--remove--other": {
+        "message": "$memberName$ grup açıklamasını kaldırdı",
+        "description": "Shown in timeline or conversation preview when v2 group changes",
+        "placeholders": {
+            "adminName": {
+                "content": "$1",
+                "example": "Alice"
+            }
+        }
+    },
+    "GroupV2--description--remove--unknown": {
+        "message": "Grup açıklaması kaldırıldı.",
+        "description": "Shown in timeline or conversation preview when v2 group changes"
+    },
+    "GroupV2--description--change--you": {
+        "message": "Grup tanımını değiştirdiniz.",
+        "description": "Shown in timeline or conversation preview when v2 group changes"
+    },
+    "GroupV2--description--change--other": {
+        "message": "$memberName$ grup açıklamasını değiştirdi",
+        "description": "Shown in timeline or conversation preview when v2 group changes",
+        "placeholders": {
+            "adminName": {
+                "content": "$1",
+                "example": "Alice"
+            }
+        }
+    },
+    "GroupV2--description--change--unknown": {
+        "message": "Grup açıklaması değiştirildi.",
+        "description": "Shown in timeline or conversation preview when v2 group changes"
+    },
     "GroupV1--Migration--disabled": {
         "message": "Yöneticiler ve bahsedilmeler gibi yeni özellikleri etkinleştirmek için bu grubu yükseltin. Bu gruba resimlerini veya isimlerini paylaşmayan kişilere gruba katılma daveti gönderilecektir. $learnMore$",
         "description": "Shown instead of composition area when user is forced to migrate a legacy group (GV1).",
@@ -4663,6 +4831,18 @@
         "message": "Dosya ekle",
         "description": "Aria label for file attachment button in composition area"
     },
+    "CompositionArea--sms-only__title": {
+        "message": "Bu kişi Signal kullanmıyor",
+        "description": "Title for the composition area for the SMS-only contact"
+    },
+    "CompositionArea--sms-only__body": {
+        "message": "Signal Desktop Signal olmayan kişilerle ileti alışverişini desteklemiyor. Bu kişiye daha güvenli ileti deneyimi için Signal kurmasını söyleyin.",
+        "description": "Body for the composition area for the SMS-only contact"
+    },
+    "CompositionArea--sms-only__spinner-label": {
+        "message": "Kişinin kayıt durumu denetleniyor",
+        "description": "Displayed while checking if the contact is SMS-only"
+    },
     "countMutedConversationsDescription": {
         "message": "Sessize alınan konuşmaları rozet sayacına kat",
         "description": "Description for counting muted conversations in badge setting"
@@ -4703,6 +4883,10 @@
         "message": "Gruptan çıkart",
         "description": "Button text for remove from group button in Group Contact Details modal"
     },
+    "showChatColorEditor": {
+        "message": "Konuşma rengi",
+        "description": "This is a button in the conversation context menu to show the chat color editor"
+    },
     "showConversationDetails": {
         "message": "Grup ayarları",
         "description": "This is a button in the conversation context menu to show group settings"
@@ -4724,7 +4908,7 @@
         "description": "This is the label for the 'who can edit the group' panel"
     },
     "ConversationDetails--group-info-info": {
-        "message": "Grup adını, resmini ve kaybolan iletiler zamanlayıcısını kimin düzenleyebileceğini seçin.",
+        "message": "Grup adını, fotoğrafını, açıklamasını ve kaybolan ileti zamanlayıcısını kimlerin düzenleyebileceğini seçin.",
         "description": "This is the additional info for the 'who can edit the group' panel"
     },
     "ConversationDetails--add-members-label": {
@@ -5132,5 +5316,305 @@
     "ForwardMessageModal--continue": {
         "message": "Devam Et",
         "description": "aria-label for the 'next' button in the forward a message modal dialog"
+    },
+    "MessageRequestWarning__learn-more": {
+        "message": "Dahasını öğrenin",
+        "description": "Shown on the message request warning. Clicking this button will open a dialog with more information"
+    },
+    "MessageRequestWarning__dialog__details": {
+        "message": "Bu kişiyle ortak bir grubunuz yok. İstenmeyen iletileri önlemek için kabul etmeden önce istekleri dikkatlice gözden geçirin.",
+        "description": "Shown in the message request warning dialog. Gives more information about message requests"
+    },
+    "MessageRequestWarning__dialog__learn-even-more": {
+        "message": "İleti İstekleri Hakkında",
+        "description": "Shown in the message request warning dialog. Clicking this button will open a page on Signal's support site"
+    },
+    "ContactSpoofing__same-name": {
+        "message": "İstekleri dikkatle gözden geçirin. Signal aynı ada sahip başka bir kişi buldu. $link$",
+        "description": "Shown in the timeline warning when you have a message request from someone with the same name as someone else",
+        "placeholders": {
+            "link": {
+                "content": "$1",
+                "example": "Review request"
+            }
+        }
+    },
+    "ContactSpoofing__same-name-in-group": {
+        "message": "$count$ grup üyesi aynı ada sahip. $link$",
+        "description": "Shown in the timeline warning when you multiple group members have the same name",
+        "placeholders": {
+            "count": {
+                "content": "$1",
+                "example": "3"
+            },
+            "link": {
+                "content": "$2",
+                "example": "Tap to review"
+            }
+        }
+    },
+    "ContactSpoofing__same-name__link": {
+        "message": "İsteği incele",
+        "description": "Shown in the timeline warning when you have a message request from someone with the same name as someone else"
+    },
+    "ContactSpoofing__same-name-in-group__link": {
+        "message": "İncelemek için tıklayın",
+        "description": "Shown in the timeline warning when you multiple group members have the same name"
+    },
+    "ContactSpoofingReviewDialog__title": {
+        "message": "İsteği incele",
+        "description": "Title for the contact name spoofing review dialog"
+    },
+    "ContactSpoofingReviewDialog__description": {
+        "message": "İsteğin kimden geldiğinden emin değilseniz, aşağıdaki kişileri inceleyerek tercih yapabilirsiniz.",
+        "description": "Description for the contact spoofing review dialog"
+    },
+    "ContactSpoofingReviewDialog__possibly-unsafe-title": {
+        "message": "İstek",
+        "description": "Header in the contact spoofing review dialog, shown above the potentially-unsafe user"
+    },
+    "ContactSpoofingReviewDialog__safe-title": {
+        "message": "Kişiniz",
+        "description": "Header in the contact spoofing review dialog, shown above the \"safe\" user"
+    },
+    "ContactSpoofingReviewDialog__group__title": {
+        "message": "Üyeleri incele",
+        "description": "Title for the contact name spoofing review dialog in groups"
+    },
+    "ContactSpoofingReviewDialog__group__description": {
+        "message": "$count$ grup üyesi benzer ada sahip, aşağıdaki üyeleri İnceleyin veya bir işlem seçin.",
+        "description": "Description for the group contact spoofing review dialog"
+    },
+    "ContactSpoofingReviewDialog__group__members-header": {
+        "message": "Üyeler",
+        "description": "Header in the group contact spoofing review dialog. After this header, there will be a list of members"
+    },
+    "ContactSpoofingReviewDialog__group__name-change-info": {
+        "message": "Yakın zamanda $oldName$ profil ismini $newName$ şeklinde değiştirdi",
+        "description": "In the group contact spoofing review dialog, this text is shown when someone has changed their name recently",
+        "placeholders": {
+            "oldName": {
+                "content": "$1",
+                "example": "Jane Doe"
+            },
+            "newName": {
+                "content": "$2",
+                "example": "Doe Jane"
+            }
+        }
+    },
+    "RemoveGroupMemberConfirmation__remove-button": {
+        "message": "Gruptan çıkart",
+        "description": "When confirming the removal of a group member, show this text in the button"
+    },
+    "RemoveGroupMemberConfirmation__description": {
+        "message": "\"$name$\" gruptan çıkarılsın mı?",
+        "description": "When confirming the removal of a group member, show this text in the dialog",
+        "placeholders": {
+            "name": {
+                "content": "$1",
+                "example": "Jane Doe"
+            }
+        }
+    },
+    "CaptchaDialog__title": {
+        "message": "İleti göndermeyi sürdürmek için doğrulayın",
+        "description": "Header in the captcha dialog"
+    },
+    "CaptchaDialog__first-paragraph": {
+        "message": "Signal'de istenmeyen iletileri önlemek için, lütfen doğrulamayı tamamlayın.",
+        "description": "First paragraph in the captcha dialog"
+    },
+    "CaptchaDialog__second-paragraph": {
+        "message": "Doğrulamadan sonra, ileti göndermeye devam edebilirsiniz. Tüm duraklatılmış iletiler otomatik olarak gönderilecektir.",
+        "description": "First paragraph in the captcha dialog"
+    },
+    "CaptchaDialog--can-close__title": {
+        "message": "Doğrulamadan devam et?",
+        "description": "Header in the captcha dialog that can be closed"
+    },
+    "CaptchaDialog--can-close__body": {
+        "message": "Doğrulamayı atlamayı seçerseniz, diğer kişilerden gelen iletileri kaçırabilir ve ileti göndermekte başarısız olabilirsiniz.",
+        "description": "Body of the captcha dialog that can be closed"
+    },
+    "CaptchaDialog--can_close__skip-verification": {
+        "message": "Doğrulamayı atla",
+        "description": "Skip button of the captcha dialog that can be closed"
+    },
+    "verificationComplete": {
+        "message": "Doğrulama tamamlandı.",
+        "description": "Displayed after successful captcha"
+    },
+    "verificationFailed": {
+        "message": "Doğrulama başarısız oldu. Lütfen daha sonra tekrar deneyin.",
+        "description": "Displayed after unsuccessful captcha"
+    },
+    "deleteForEveryoneFailed": {
+        "message": "İletinin herkesten silinmesi başarısız oldu. Lütfen daha sonra tekrar deneyin.",
+        "description": "Displayed when delete-for-everyone has failed to send to all recepients"
+    },
+    "ChatColorPicker__delete--title": {
+        "message": "Rengi sil",
+        "description": "Confirm title for deleting custom color"
+    },
+    "ChatColorPicker__delete--message": {
+        "message": "Bu özel renk $num$ sohbette kullanılıyor. Tüm sohbetler için silmek istiyor musunuz?",
+        "description": "Confirm message for deleting custom color",
+        "placeholders": {
+            "num": {
+                "content": "$1",
+                "example": "5"
+            }
+        }
+    },
+    "ChatColorPicker__global-chat-color": {
+        "message": "Genel Sohhet Rengi",
+        "description": "Modal title for the chat color picker and editor for all conversations"
+    },
+    "ChatColorPicker__menu-title": {
+        "message": "Konuşma Rengi",
+        "description": "View title for the chat color picker and editor"
+    },
+    "ChatColorPicker__reset": {
+        "message": "Sohbet rengini sıfırla",
+        "description": "Button label for resetting chat colors"
+    },
+    "ChatColorPicker__resetDefault": {
+        "message": "Sohbet Renklerini Sıfırla",
+        "description": "Confirmation dialog title for resetting all chat colors or only the global default one"
+    },
+    "ChatColorPicker__resetAll": {
+        "message": "Tüm sohbet renklerini sıfırla",
+        "description": "Button label for resetting all chat colors"
+    },
+    "ChatColorPicker__confirm-reset-default": {
+        "message": "Varsayılanı sıfırla",
+        "description": "Button label for resetting only global chat color"
+    },
+    "ChatColorPicker__confirm-reset": {
+        "message": "Sıfırla",
+        "description": "Confirm button label for resetting chat colors"
+    },
+    "ChatColorPicker__confirm-reset-message": {
+        "message": "Tüm sohbet renklerini değiştirmek ister misiniz?",
+        "description": "Modal message text for confirming resetting of chat colors"
+    },
+    "ChatColorPicker__custom-color--label": {
+        "message": "Özel renk düzenleyiciyi görüntüle",
+        "description": "aria-label for custom color editor button"
+    },
+    "ChatColorPicker__sampleBubble1": {
+        "message": "Sohbet renginin ön izlemesi",
+        "description": "An example message bubble for selecting the chat color"
+    },
+    "ChatColorPicker__sampleBubble2": {
+        "message": "Başka baloncuk.",
+        "description": "An example message bubble for selecting the chat color"
+    },
+    "ChatColorPicker__sampleBubble3": {
+        "message": "Renk yalnızca size gözükür.",
+        "description": "An example message bubble for selecting the chat color"
+    },
+    "ChatColorPicker__context--edit": {
+        "message": "Rengi düzenle",
+        "description": "Option in the custom color bubble context menu"
+    },
+    "ChatColorPicker__context--duplicate": {
+        "message": "Kopyala",
+        "description": "Option in the custom color bubble context menu"
+    },
+    "ChatColorPicker__context--delete": {
+        "message": "Sil",
+        "description": "Option in the custom color bubble context menu"
+    },
+    "CustomColorEditor__solid": {
+        "message": "Düz",
+        "description": "Tab label for selecting solid colors"
+    },
+    "CustomColorEditor__gradient": {
+        "message": "Karışım",
+        "description": "Tab label for selecting a gradient"
+    },
+    "CustomColorEditor__hue": {
+        "message": "Ton",
+        "description": "Label for the hue slider"
+    },
+    "CustomColorEditor__saturation": {
+        "message": "Doygunluk",
+        "description": "Label for the saturation slider"
+    },
+    "CustomColorEditor__title": {
+        "message": "Özel Renk",
+        "description": "Modal title for the custom color editor"
+    },
+    "customDisappearingTimeOption": {
+        "message": "Özel zaman...",
+        "description": "Text for an option in Disappearing Messages menu and Conversation Details Disappearing Messages setting when no user value is available"
+    },
+    "selectedCustomDisappearingTimeOption": {
+        "message": "Özel zaman",
+        "description": "Text for an option in Conversation Details Disappearing Messages setting when user previously selected custom time"
+    },
+    "DisappearingTimeDialog__title": {
+        "message": "Özel Zaman",
+        "description": "Title for the custom disappearing message timeout dialog"
+    },
+    "DisappearingTimeDialog__body": {
+        "message": "Kaybolan iletiler için özel bir zaman seçin.",
+        "description": "Body for the custom disappearing message timeout dialog"
+    },
+    "DisappearingTimeDialog__set": {
+        "message": "Ayarla",
+        "description": "Text for the dialog button confirming the custom disappearing message timeout"
+    },
+    "DisappearingTimeDialog__seconds": {
+        "message": "Saniye",
+        "description": "Name of the 'seconds' unit select for the custom disappearing message timeout dialog"
+    },
+    "DisappearingTimeDialog__minutes": {
+        "message": "Dakika",
+        "description": "Name of the 'minutes' unit select for the custom disappearing message timeout dialog"
+    },
+    "DisappearingTimeDialog__hours": {
+        "message": "Saat",
+        "description": "Name of the 'hours' unit select for the custom disappearing message timeout dialog"
+    },
+    "DisappearingTimeDialog__days": {
+        "message": "Gün",
+        "description": "Name of the 'days' unit select for the custom disappearing message timeout dialog"
+    },
+    "DisappearingTimeDialog__weeks": {
+        "message": "Hafta",
+        "description": "Name of the 'weeks' unit select for the custom disappearing message timeout dialog"
+    },
+    "settings__DisappearingMessages__footer": {
+        "message": "Tarafınızca başlatılan tüm yeni iletiler için varsayılan kaybolan ileti zamanlayıcısı ayarlayın.",
+        "description": "Footer for the Disappearing Messages settings section"
+    },
+    "settings__DisappearingMessages__timer__label": {
+        "message": "Yeni sohbetler için varsayılan zamanlayıcı",
+        "description": "Label for the Disapearring Messages default timer setting"
+    },
+    "UniversalTimerNotification__text": {
+        "message": "Kişiye ileti gönderdiğinizde kaybolan ileti süresi $timeValue$ olarak ayarlanacaktır.",
+        "description": "A message displayed when default disappearing message timeout is about to be applied",
+        "placeholders": {
+            "timeValue": {
+                "content": "$1",
+                "example": "1 week"
+            }
+        }
+    },
+    "GroupDescription__read-more": {
+        "message": "devamını oku",
+        "description": "Button text when the group description is too long"
+    },
+    "EditConversationAttributesModal__description-warning": {
+        "message": "Grup tanımları bu grubun üyeleri ve davetli kişiler tarafından görülebilecektir.",
+        "description": "Label text shown when editing group description"
+    },
+    "ConversationDetailsHeader--add-group-description": {
+        "message": "Grup açıklaması ekle",
+        "description": "Placeholder text in the details header for those that can edit the group description"
     }
 }

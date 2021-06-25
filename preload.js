@@ -24,6 +24,10 @@ try {
   const { app } = remote;
   const { nativeTheme } = remote.require('electron');
 
+  const { Context: SignalContext } = require('./ts/context');
+
+  window.SignalContext = new SignalContext();
+
   window.sqlInitializer = require('./ts/sql/initialize');
 
   window.PROTO_ROOT = 'protos';
@@ -147,9 +151,6 @@ try {
     window.log.info('show window');
     ipc.send('show-window');
   };
-  window.setSecureInput = enabled => {
-    ipc.send('set-secure-input', enabled);
-  };
 
   window.titleBarDoubleClick = () => {
     ipc.send('title-bar-double-click');
@@ -192,6 +193,15 @@ try {
   ipc.on('challenge:response', (_event, response) => {
     Whisper.events.trigger('challengeResponse', response);
   });
+
+  ipc.on('power-channel:suspend', () => {
+    Whisper.events.trigger('powerMonitorSuspend');
+  });
+
+  ipc.on('power-channel:resume', () => {
+    Whisper.events.trigger('powerMonitorResume');
+  });
+
   window.sendChallengeRequest = request =>
     ipc.send('challenge:request', request);
 
@@ -380,6 +390,8 @@ try {
   installGetter('sync-request', 'getSyncRequest');
   installGetter('sync-time', 'getLastSyncTime');
   installSetter('sync-time', 'setLastSyncTime');
+  installGetter('universal-expire-timer', 'getUniversalExpireTimer');
+  installSetter('universal-expire-timer', 'setUniversalExpireTimer');
 
   ipc.on('delete-all-data', async () => {
     const { deleteAllData } = window.Events;
@@ -485,13 +497,13 @@ try {
   const { autoOrientImage } = require('./js/modules/auto_orient_image');
   const { imageToBlurHash } = require('./ts/util/imageToBlurHash');
   const { isGroupCallingEnabled } = require('./ts/util/isGroupCallingEnabled');
+  const { isValidGuid } = require('./ts/util/isValidGuid');
   const { ActiveWindowService } = require('./ts/services/ActiveWindowService');
 
   window.autoOrientImage = autoOrientImage;
   window.dataURLToBlobSync = require('blueimp-canvas-to-blob');
   window.imageToBlurHash = imageToBlurHash;
   window.emojiData = require('emoji-datasource');
-  window.filesize = require('filesize');
   window.libphonenumber = require('google-libphonenumber').PhoneNumberUtil.getInstance();
   window.libphonenumber.PhoneNumberFormat = require('google-libphonenumber').PhoneNumberFormat;
   window.loadImage = require('blueimp-load-image');
@@ -512,10 +524,7 @@ try {
     reducedMotionSetting: Boolean(config.reducedMotionSetting),
   };
 
-  window.isValidGuid = maybeGuid =>
-    /^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i.test(
-      maybeGuid
-    );
+  window.isValidGuid = isValidGuid;
   // https://stackoverflow.com/a/23299989
   window.isValidE164 = maybeE164 => /^\+?[1-9]\d{1,14}$/.test(maybeE164);
 
@@ -563,6 +572,11 @@ try {
   window.baseStickersPath = Attachments.getStickersPath(userDataPath);
   window.baseTempPath = Attachments.getTempPath(userDataPath);
   window.baseDraftPath = Attachments.getDraftPath(userDataPath);
+
+  const { addSensitivePath } = require('./ts/util/privacy');
+
+  addSensitivePath(window.baseAttachmentsPath);
+
   window.Signal = Signal.setup({
     Attachments,
     userDataPath,
@@ -587,7 +601,6 @@ try {
   require('./ts/background');
 
   // Pulling these in separately since they access filesystem, electron
-  window.Signal.Backup = require('./js/modules/backup');
   window.Signal.Debug = require('./js/modules/debug');
   window.Signal.Logs = require('./js/modules/logs');
 
