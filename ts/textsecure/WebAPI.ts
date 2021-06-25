@@ -1028,7 +1028,6 @@ export type WebAPIType = {
   registerKeys: (genKeys: KeysType) => Promise<void>;
   registerSupportForUnauthenticatedDelivery: () => Promise<any>;
   removeSignalingKey: () => Promise<void>;
-<<<<<<< HEAD
   requestVerificationSMS: (
     number: string,
     captchaToken?: string
@@ -1037,11 +1036,7 @@ export type WebAPIType = {
     number: string,
     captchaToken?: string
   ) => Promise<any>;
-=======
   reportMessage: (senderE164: string, serverGuid: string) => Promise<void>;
-  requestVerificationSMS: (number: string) => Promise<any>;
-  requestVerificationVoice: (number: string) => Promise<any>;
->>>>>>> autoreply-dev
   sendMessages: (
     destination: string,
     messageArray: Array<MessageType>,
